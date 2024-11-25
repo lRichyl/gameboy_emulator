@@ -216,15 +216,15 @@ i32 run_cpu(CPU *cpu){
             if(cpu->machine_cycle == 1){
                imm_low = fetch(cpu);
             }
-            if(cpu->machine_cycle == 2){
+            else if(cpu->machine_cycle == 2){
                imm_high = fetch(cpu);
             }
-            if(cpu->machine_cycle == 3){
+            else if(cpu->machine_cycle == 3){
                imm = imm = (imm_high << 8) | imm_low;
                write_mem(cpu, imm, cpu->SP & 0x00FF);
                imm++;
             }
-            if(cpu->machine_cycle == 4){
+            else if(cpu->machine_cycle == 4){
                write_mem(cpu, imm, (cpu->SP & 0xFF00) >> 8);
             }
             else if(cpu->machine_cycle == 5){
@@ -246,7 +246,7 @@ i32 run_cpu(CPU *cpu){
 
                 (*cpu->wide_register_map[reg])++;
             }
-            if(cpu->machine_cycle == 2){
+            else if(cpu->machine_cycle == 2){
                 cpu->opcode = fetch(cpu);
                 cpu->machine_cycle = 0;
             }
@@ -258,7 +258,7 @@ i32 run_cpu(CPU *cpu){
             if(cpu->machine_cycle == 1){
                 cpu->SP++;
             }
-            if(cpu->machine_cycle == 2){
+            else if(cpu->machine_cycle == 2){
                 cpu->opcode = fetch(cpu);
                 cpu->machine_cycle = 0;
             }
@@ -276,7 +276,7 @@ i32 run_cpu(CPU *cpu){
 
                 (*cpu->wide_register_map[reg])--;
             }
-            if(cpu->machine_cycle == 2){
+            else if(cpu->machine_cycle == 2){
                 cpu->opcode = fetch(cpu);
                 cpu->machine_cycle = 0;
             }
@@ -288,7 +288,7 @@ i32 run_cpu(CPU *cpu){
             if(cpu->machine_cycle == 1){
                 cpu->SP--;
             }
-            if(cpu->machine_cycle == 2){
+            else if(cpu->machine_cycle == 2){
                 cpu->opcode = fetch(cpu);
                 cpu->machine_cycle = 0;
             }
@@ -307,7 +307,7 @@ i32 run_cpu(CPU *cpu){
                 u8 reg_low = ((*cpu->wide_register_map[reg]) & 0x00FF);
                 cpu->L = sum_and_set_flags(cpu, cpu->L, reg_low, true, false);
             }
-            if(cpu->machine_cycle == 2){
+            else if(cpu->machine_cycle == 2){
                 u8 reg = cpu->opcode & 0x30;
                 reg >>= 4;
                 u8 reg_high = ((*cpu->wide_register_map[reg]) & 0xFF00) >> 8;
@@ -325,7 +325,7 @@ i32 run_cpu(CPU *cpu){
                 u8 reg_low = ((cpu->SP) & 0x00FF);
                 cpu->L = sum_and_set_flags(cpu, cpu->L, reg_low, true, false);
             }
-            if(cpu->machine_cycle == 2){
+            else if(cpu->machine_cycle == 2){
                 u8 reg_high = ((cpu->SP) & 0xFF00) >> 8;
                 u8 carry = (cpu->flags & FLAG_CARRY) >> 4;
                 cpu->H =  sum_and_set_flags(cpu, cpu->H, reg_high + carry, true, false);
@@ -359,6 +359,22 @@ i32 run_cpu(CPU *cpu){
             return 4;
         }
         
+        case 0x34:{ // INC [HL]
+            cpu->machine_cycle++;
+            if(cpu->machine_cycle == 1){
+                mem_value = read_mem(cpu, cpu->HL);
+            }
+            else if(cpu->machine_cycle == 2){
+                mem_value = sum_and_set_flags(cpu, mem_value, 1, false, true);
+                write_mem(cpu, cpu->HL, mem_value);
+            }
+            else if(cpu->machine_cycle == 3){
+                cpu->opcode = fetch(cpu);
+                cpu->machine_cycle = 0;
+            }
+
+            return 4;
+        }
 
 
         default:{

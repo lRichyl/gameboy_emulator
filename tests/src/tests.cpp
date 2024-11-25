@@ -446,6 +446,30 @@ void inc_r8(){
 	show_test_result(test_name, result);
 }
 
+void inc_memhl(){
+	const char *test_name = "INC [HL]";
+	bool result = true;
+	{	// INC [HL]
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[1] = {0x34};
+		memcpy(cpu->memory, mem, 1);
+
+		cpu->HL = 0xAABB;
+		cpu->memory[cpu->HL] = 0xFF;
+		u8 previous_mem = cpu->memory[cpu->HL];
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		check_result(&result, cpu->memory[cpu->HL] == u8(previous_mem + 1));
+		check_result(&result, (cpu->flags) & (FLAG_HALFCARRY|FLAG_ZERO));
+		check_result(&result, cpu->PC == 0x03);
+	}
+
+	show_test_result(test_name, result);
+}
 
 int main(){
 	ld_r16_imm16();
@@ -456,6 +480,7 @@ int main(){
 	dec_r16();
 	add_hl_r16();
 	inc_r8();
+	inc_memhl();
 
 	return 0;
 }
