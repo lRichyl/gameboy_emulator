@@ -25,13 +25,50 @@ u8 fetch(CPU *cpu){
     return byte;
 }
 
-void write_mem(CPU *cpu, u16 address, u8 value){
+static void write_mem(CPU *cpu, u16 address, u8 value){
     assert(address <= 0xFFFF);
     cpu->memory[address] = value;
 }
 
-u8 read_mem(CPU *cpu, u16 address){
+static u8 read_mem(CPU *cpu, u16 address){
     return cpu->memory[address];
+}
+
+static void set_flag(CPU *cpu, Flag flag){
+    cpu->flags = cpu->flags | flag;
+}
+
+static void unset_flag(CPU *cpu, Flag flag){
+    cpu->flags = cpu->flags & ~(flag);
+}
+
+static u8 sum_and_set_flags(CPU *cpu, u8 summand_left, u8 summand_right, b32 check_carry = false, bool check_zero = false){
+    u16 result = (u16)summand_left + (u16)summand_right;
+    
+    if(check_zero){
+        if(u8(result) == 0)     
+            set_flag(cpu, FLAG_ZERO);
+        else
+            unset_flag(cpu, FLAG_ZERO);
+    }
+
+    unset_flag(cpu, FLAG_SUB);
+
+    u8 nibble_left_summand     = summand_left    & 0x0F;
+    u8 nibble_right_summand    = summand_right   & 0x0F;
+    if((nibble_left_summand + nibble_right_summand) & 0x10) 
+        set_flag(cpu, FLAG_HALFCARRY);
+    else
+        unset_flag(cpu, FLAG_HALFCARRY);
+
+    if(check_carry){
+        if(result & 0x100) 
+            set_flag(cpu, FLAG_CARRY);
+        else
+            unset_flag(cpu, FLAG_CARRY);
+    }
+
+    return (u8)result;
 }
 
 static u8 imm_low;
@@ -184,11 +221,11 @@ i32 run_cpu(CPU *cpu){
             }
             if(cpu->machine_cycle == 3){
                imm = imm = (imm_high << 8) | imm_low;
-               write_mem(cpu, imm, cpu->SP | 0x0F);
+               write_mem(cpu, imm, cpu->SP & 0x00FF);
                imm++;
             }
             if(cpu->machine_cycle == 4){
-               write_mem(cpu, imm, (cpu->SP | 0xF0) >> 4);
+               write_mem(cpu, imm, (cpu->SP & 0xFF00) >> 8);
             }
             else if(cpu->machine_cycle == 5){
                 cpu->opcode = fetch(cpu);
@@ -207,7 +244,7 @@ i32 run_cpu(CPU *cpu){
                 reg >>= 4;
                 assert(reg <= 2);
 
-                *cpu->wide_register_map[reg]++;
+                (*cpu->wide_register_map[reg])++;
             }
             if(cpu->machine_cycle == 2){
                 cpu->opcode = fetch(cpu);
@@ -237,7 +274,7 @@ i32 run_cpu(CPU *cpu){
                 reg >>= 4;
                 assert(reg <= 2);
 
-                *cpu->wide_register_map[reg]--;
+                (*cpu->wide_register_map[reg])--;
             }
             if(cpu->machine_cycle == 2){
                 cpu->opcode = fetch(cpu);
@@ -252,6 +289,47 @@ i32 run_cpu(CPU *cpu){
                 cpu->SP--;
             }
             if(cpu->machine_cycle == 2){
+                cpu->opcode = fetch(cpu);
+                cpu->machine_cycle = 0;
+            }
+            return 4;
+        }
+
+        case 0x09:
+        case 0x19:
+        case 0x29:{ // ADD HL, r16  for BC, DE and HL.
+            cpu->machine_cycle++;
+            if(cpu->machine_cycle == 1){
+                u8 reg = cpu->opcode & 0x30;
+                reg >>= 4;
+                assert(reg <= 2);
+
+                u8 reg_low = ((*cpu->wide_register_map[reg]) & 0x00FF);
+                cpu->L = sum_and_set_flags(cpu, cpu->L, reg_low, true, false);
+            }
+            if(cpu->machine_cycle == 2){
+                u8 reg = cpu->opcode & 0x30;
+                reg >>= 4;
+                u8 reg_high = ((*cpu->wide_register_map[reg]) & 0xFF00) >> 8;
+                cpu->H =  sum_and_set_flags(cpu, cpu->H, reg_high, true, false);
+
+                cpu->opcode = fetch(cpu);
+                cpu->machine_cycle = 0;
+            }
+            return 4;
+        }
+
+        case 0x39:{ // ADD HL, SP
+            cpu->machine_cycle++;
+            if(cpu->machine_cycle == 1){
+                u8 reg_low = ((cpu->SP) & 0x00FF);
+                cpu->L = sum_and_set_flags(cpu, cpu->L, reg_low, true, false);
+            }
+            if(cpu->machine_cycle == 2){
+                u8 reg_high = ((cpu->SP) & 0xFF00) >> 8;
+                u8 carry = (cpu->flags & FLAG_CARRY) >> 4;
+                cpu->H =  sum_and_set_flags(cpu, cpu->H, reg_high + carry, true, false);
+
                 cpu->opcode = fetch(cpu);
                 cpu->machine_cycle = 0;
             }

@@ -9,9 +9,13 @@ void show_test_result(const char *test_name, bool result){
 		printf("%s\tFAILED\n", test_name);
 }
 
+void check_result(bool *result, bool expression){
+	if(!expression && *result) *result = expression;
+}
+
 void ld_r16_imm16(){
 	const char *test_name = "LD r16, imm16";
-	bool result = false;
+	bool result = true;
 	{
 		Gameboy gmb = {};
 		init_gameboy(&gmb);
@@ -22,7 +26,7 @@ void ld_r16_imm16(){
 		while(cpu->PC < 4){
 			run_cpu(cpu);
 		}
-		result = cpu->BC == 0xBC01;
+		check_result(&result, cpu->BC == 0xBC01);
 	}
 	{
 		Gameboy gmb = {};
@@ -34,7 +38,7 @@ void ld_r16_imm16(){
 		while(cpu->PC < 4){
 			run_cpu(cpu);
 		}
-		result = cpu->DE == 0xDE02;
+		check_result(&result, cpu->DE == 0xDE02);
 	}
 	{
 		Gameboy gmb = {};
@@ -46,7 +50,7 @@ void ld_r16_imm16(){
 		while(cpu->PC < 4){
 			run_cpu(cpu);
 		}
-		result = cpu->HL == 0xAA03;
+		check_result(&result, cpu->HL == 0xAA03);
 	}
 	{
 		Gameboy gmb = {};
@@ -58,16 +62,16 @@ void ld_r16_imm16(){
 		while(cpu->PC < 4){
 			run_cpu(cpu);
 		}
-		result = cpu->SP == 0xCC04;
+		check_result(&result, cpu->SP == 0xCC04);
 		
-		result = cpu->PC == 0x04;
+		check_result(&result, cpu->PC == 0x04);
 	}
 	show_test_result(test_name, result);
 }
 
 void ld_memr16_a(){
 	const char *test_name = "LD [r16], A";
-	bool result = false;
+	bool result = true;
 	{	// LD [BC], A test
 		Gameboy gmb = {};
 		init_gameboy(&gmb);
@@ -81,8 +85,8 @@ void ld_memr16_a(){
 		while(cpu->PC < 2){
 			run_cpu(cpu);
 		}
-		result = cpu->memory[cpu->BC] == 0x01;
-		result = cpu->PC == 0x02;
+		check_result(&result, cpu->memory[cpu->BC] == 0x01);
+		check_result(&result, cpu->PC == 0x02);
 	}
 
 	{	// LD [DE], A test
@@ -98,8 +102,8 @@ void ld_memr16_a(){
 		while(cpu->PC < 2){
 			run_cpu(cpu);
 		}
-		result = cpu->memory[cpu->DE] == 0xA0;
-		result = cpu->PC == 0x02;
+		check_result(&result, cpu->memory[cpu->DE] == 0xA0);
+		check_result(&result, cpu->PC == 0x02);
 	}
 
 	{ // LD [HL+], A test
@@ -116,9 +120,9 @@ void ld_memr16_a(){
 		while(cpu->PC < 2){
 			run_cpu(cpu);
 		}
-		result = cpu->memory[previous_HL] == 0xBB;
-		result = (cpu->HL == previous_HL + 1);
-		result = cpu->PC == 0x02;
+		check_result(&result, cpu->memory[previous_HL] == 0xBB);
+		check_result(&result, cpu->HL == previous_HL + 1);
+		check_result(&result, cpu->PC == 0x02);
 	}
 
 	{  // LD [HL-], A test
@@ -135,9 +139,9 @@ void ld_memr16_a(){
 		while(cpu->PC < 2){
 			run_cpu(cpu);
 		}
-		result = cpu->memory[previous_HL] == 0xDC;
-		result = (cpu->HL == previous_HL - 1);
-		result = cpu->PC == 0x02;
+		check_result(&result, cpu->memory[previous_HL] == 0xDC);
+		check_result(&result, cpu->HL == previous_HL - 1);
+		check_result(&result, cpu->PC == 0x02);
 	}
 
 	show_test_result(test_name, result);
@@ -147,7 +151,7 @@ void ld_memr16_a(){
 
 void ld_a_memr16(){
 	const char *test_name = "LD A, [r16]";
-	bool result = false;
+	bool result = true;
 	{	// LD A, [BC] test
 		Gameboy gmb = {};
 		init_gameboy(&gmb);
@@ -161,8 +165,8 @@ void ld_a_memr16(){
 		while(cpu->PC < 2){
 			run_cpu(cpu);
 		}
-		result = cpu->A == 0x01;
-		result = cpu->PC == 0x02;
+		check_result(&result, cpu->A == 0x01);
+		check_result(&result, cpu->PC == 0x02);
 	}
 
 	{	// LD A, [DE] test
@@ -170,7 +174,7 @@ void ld_a_memr16(){
 		init_gameboy(&gmb);
 
 		CPU *cpu = &gmb.cpu;
-		u8 mem[1] = {0x12};
+		u8 mem[1] = {0x1A};
 		memcpy(cpu->memory, mem, 1);
 
 		cpu->DE = 0xFFFF;
@@ -178,8 +182,8 @@ void ld_a_memr16(){
 		while(cpu->PC < 2){
 			run_cpu(cpu);
 		}
-		result = cpu->A == 0xA0;
-		result = cpu->PC == 0x02;
+		check_result(&result, cpu->A == 0xA0);
+		check_result(&result, cpu->PC == 0x02);
 	}
 
 	{ // LD A, [HL+] test
@@ -187,7 +191,7 @@ void ld_a_memr16(){
 		init_gameboy(&gmb);
 
 		CPU *cpu = &gmb.cpu;
-		u8 mem[1] = {0x22};
+		u8 mem[1] = {0x2A};
 		memcpy(cpu->memory, mem, 1);
 
 		cpu->HL = 0x0AAA;
@@ -196,9 +200,9 @@ void ld_a_memr16(){
 		while(cpu->PC < 2){
 			run_cpu(cpu);
 		}
-		result = cpu->A == 0xBB;
-		result = (cpu->HL == previous_HL + 1);
-		result = cpu->PC == 0x02;
+		check_result(&result, cpu->A == 0xBB);
+		check_result(&result, cpu->HL == previous_HL + 1);
+		check_result(&result, cpu->PC == 0x02);
 	}
 
 	{  // LD A, [HL-] test
@@ -206,7 +210,7 @@ void ld_a_memr16(){
 		init_gameboy(&gmb);
 
 		CPU *cpu = &gmb.cpu;
-		u8 mem[1] = {0x32};
+		u8 mem[1] = {0x3A};
 		memcpy(cpu->memory, mem, 1);
 
 		cpu->HL = 0x0AAA;
@@ -215,9 +219,9 @@ void ld_a_memr16(){
 		while(cpu->PC < 2){
 			run_cpu(cpu);
 		}
-		result = cpu->A == 0xDC;
-		result = (cpu->HL == previous_HL - 1);
-		result = cpu->PC == 0x02;
+		check_result(&result, cpu->A == 0xDC);
+		check_result(&result, cpu->HL == previous_HL - 1);
+		check_result(&result, cpu->PC == 0x02);
 	}
 
 	show_test_result(test_name, result);
@@ -225,7 +229,7 @@ void ld_a_memr16(){
 
 void ld_a16_sp(){
 	const char *test_name = "LD a16, SP";
-	bool result = false;
+	bool result = true;
 	{	// LD A, [BC] test
 		Gameboy gmb = {};
 		init_gameboy(&gmb);
@@ -238,16 +242,16 @@ void ld_a16_sp(){
 		while(cpu->PC < 6){
 			run_cpu(cpu);
 		}
-		result = cpu->memory[0xFF7F] == 0x20;
-		result = cpu->memory[0xFF80] == 0x10;
-		result = cpu->PC == 0x06;
+		check_result(&result, cpu->memory[0xFF7F] == 0x20);
+		check_result(&result, cpu->memory[0xFF80] == 0x10);
+		check_result(&result, cpu->PC == 0x06);
 	}
 	show_test_result(test_name, result);
 }
 
 void inc_r16(){
 	const char *test_name = "INC r16";
-	bool result = false;
+	bool result = true;
 	{	// INC r16
 		Gameboy gmb = {};
 		init_gameboy(&gmb);
@@ -257,13 +261,11 @@ void inc_r16(){
 		memcpy(cpu->memory, mem, 1);
 
 		cpu->DE = 0x05;
-		i32 cycles = 0;
 		while(cpu->PC < 2){
 			run_cpu(cpu);
 		}
-		result = cycles == 8;
-		result = cpu->DE == 0x06;
-		result = cpu->PC == 0x02;
+		check_result(&result, cpu->DE == 0x06);
+		check_result(&result, cpu->PC == 0x02);
 	}
 
 	{	// INC SP
@@ -275,14 +277,12 @@ void inc_r16(){
 		memcpy(cpu->memory, mem, 1);
 
 		cpu->SP = 0x0321;
-		i32 cycles = 0;
 		while(cpu->PC < 2){
-			cycles += run_cpu(cpu);
+			run_cpu(cpu);
 		}
 
-		result = cycles == 8;
-		result = cpu->SP == 0x0322;
-		result = cpu->PC == 0x02;
+		check_result(&result, cpu->SP == 0x0322);
+		check_result(&result, cpu->PC == 0x02);
 	}
 
 	show_test_result(test_name, result);
@@ -290,23 +290,21 @@ void inc_r16(){
 
 void dec_r16(){
 	const char *test_name = "DEC r16";
-	bool result = false;
+	bool result = true;
 	{	// DEC r16
 		Gameboy gmb = {};
 		init_gameboy(&gmb);
 
 		CPU *cpu = &gmb.cpu;
-		u8 mem[1] = {0x13};
+		u8 mem[1] = {0x1B};
 		memcpy(cpu->memory, mem, 1);
 
 		cpu->DE = 0x05;
-		i32 cycles = 0;
 		while(cpu->PC < 2){
 			run_cpu(cpu);
 		}
-		result = cycles == 8;
-		result = cpu->DE == 0x04;
-		result = cpu->PC == 0x02;
+		check_result(&result, cpu->DE == 0x04);
+		check_result(&result, cpu->PC == 0x02);
 	}
 
 	{	// DEC SP
@@ -314,18 +312,58 @@ void dec_r16(){
 		init_gameboy(&gmb);
 
 		CPU *cpu = &gmb.cpu;
-		u8 mem[1] = {0x33};
+		u8 mem[1] = {0x3B};
 		memcpy(cpu->memory, mem, 1);
 
 		cpu->SP = 0x0321;
-		i32 cycles = 0;
 		while(cpu->PC < 2){
-			cycles += run_cpu(cpu);
+			run_cpu(cpu);
 		}
 
-		result = cycles == 8;
-		result = cpu->SP == 0x0320;
-		result = cpu->PC == 0x02;
+		check_result(&result, cpu->SP == 0x0320);
+		check_result(&result, cpu->PC == 0x02);
+	}
+
+	show_test_result(test_name, result);
+}
+
+void add_hl_r16(){
+	const char *test_name = "ADD HL, r16";
+	bool result = true;
+	{	// ADD HL, BC
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[1] = {0x09};
+		memcpy(cpu->memory, mem, 1);
+
+		cpu->HL = 0xA2;
+		cpu->BC = 0x13;
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		check_result(&result, cpu->HL == 0xB5);
+		check_result(&result, !cpu->flags);
+		check_result(&result, cpu->PC == 0x03);
+	}
+
+	{	// ADD HL, SP
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[1] = {0x39};
+		memcpy(cpu->memory, mem, 1);
+
+		cpu->HL = 0xFFFF;
+		cpu->SP = 0x2030;
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		check_result(&result, cpu->HL == 0x202F);
+		check_result(&result, (cpu->flags) & (FLAG_CARRY|FLAG_HALFCARRY));
+		check_result(&result, cpu->PC == 0x03);
 	}
 
 	show_test_result(test_name, result);
@@ -338,6 +376,7 @@ int main(){
 	ld_a16_sp();
 	inc_r16();
 	dec_r16();
+	add_hl_r16();
 
 	return 0;
 }
