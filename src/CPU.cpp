@@ -107,7 +107,7 @@ i32 run_cpu(CPU *cpu){
                 reg >>= 4;
                 if(reg <= 2)
                     *cpu->wide_register_map[reg] = imm;
-                else
+                else if(reg == 3)
                     cpu->SP = imm;
 
                 cpu->opcode = fetch(cpu);
@@ -335,6 +335,31 @@ i32 run_cpu(CPU *cpu){
             }
             return 4;
         }
+
+        case 0x04:
+        case 0x14:
+        case 0x24:
+        case 0x0C:
+        case 0x1C:
+        case 0x2C:
+        case 0x3C:{ // INC r8, for B,C,D,E,H,L
+            u8 reg = cpu->opcode & 0x38;
+            reg >>= 3;
+            assert(reg <= 7);
+
+            if(reg < 6)
+                (*cpu->register_map[reg]) = sum_and_set_flags(cpu, (*cpu->register_map[reg]), 1, false, true);
+            else if(reg == 7){
+                cpu->A = sum_and_set_flags(cpu, cpu->A, 1, false, true);
+            }
+
+            cpu->opcode = fetch(cpu);
+            cpu->machine_cycle = 0;
+
+            return 4;
+        }
+        
+
 
         default:{
             printf("Opcode %X not implemented\n", cpu->opcode);
