@@ -25,6 +25,11 @@ u8 fetch(CPU *cpu){
     return byte;
 }
 
+void write_mem(CPU *cpu, u16 address, u8 value){
+    assert(address <= 0xFFFF);
+    cpu->memory[address] = value;
+}
+
 static u8 imm_low;
 static u8 imm_high;
 static u16 imm;
@@ -47,15 +52,14 @@ i32 run_cpu(CPU *cpu){
         case 0x11:
         case 0x21:
         case 0x31:{ // LD r16, imm16
-            if(cpu->machine_cycle == 0){
+            cpu->machine_cycle++;
+            if(cpu->machine_cycle == 1){
                 imm_low = fetch(cpu);
-                cpu->machine_cycle++;
-            }
-            else if(cpu->machine_cycle == 1){
-                imm_high = fetch(cpu);
-                cpu->machine_cycle++;
             }
             else if(cpu->machine_cycle == 2){
+                imm_high = fetch(cpu);
+            }
+            else if(cpu->machine_cycle == 3){
                 imm = (imm_high << 8) | imm_low;
                 u8 reg = cpu->opcode & 0x30;
                 reg >>= 4;
@@ -68,6 +72,51 @@ i32 run_cpu(CPU *cpu){
                 cpu->machine_cycle = 0;
             }
 
+            return 4;
+        }
+
+        case 0x02:
+        case 0x12:{ // LD [r16], A.    Only BC and DE.
+            cpu->machine_cycle++;
+            if(cpu->machine_cycle == 1){
+                u8 reg = cpu->opcode & 0x30;
+                reg >>= 4;
+                assert(reg <= 1);
+                write_mem(cpu, *cpu->wide_register_map[reg], cpu->A);
+            }
+            else if(cpu->machine_cycle == 2){
+                cpu->opcode = fetch(cpu);
+                cpu->machine_cycle = 0;
+            }
+
+            return 4;
+        }
+
+
+        
+        case 0x22:{ // LD [HL+], A
+            cpu->machine_cycle++;
+            if(cpu->machine_cycle == 1){
+                write_mem(cpu, cpu->HL, cpu->A);
+                cpu->HL++;
+            }
+            else if(cpu->machine_cycle == 2){
+                cpu->opcode = fetch(cpu);
+                cpu->machine_cycle = 0;
+            }
+            return 4;
+        }
+
+        case 0x32:{ // LD [HL-], A
+            cpu->machine_cycle++;
+            if(cpu->machine_cycle == 1){
+                write_mem(cpu, cpu->HL, cpu->A);
+                cpu->HL--;
+            }
+            else if(cpu->machine_cycle == 2){
+                cpu->opcode = fetch(cpu);
+                cpu->machine_cycle = 0;
+            }
             return 4;
         }
 

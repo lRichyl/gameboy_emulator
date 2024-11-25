@@ -65,8 +65,83 @@ void ld_r16_imm16(){
 	show_test_result(test_name, result);
 }
 
+void ld_memr16_a(){
+	const char *test_name = "LD [r16], A";
+	bool result = false;
+	{	// LD [BC], A test
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[1] = {0x02};
+		memcpy(cpu->memory, mem, 1);
+
+		cpu->A = 0x01;
+		cpu->BC = 0x07FF;
+		while(cpu->PC < 2){
+			run_cpu(cpu);
+		}
+		result = cpu->memory[cpu->BC] == 0x01;
+	}
+
+	{	// LD [DE], A test
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[1] = {0x12};
+		memcpy(cpu->memory, mem, 1);
+
+		cpu->A = 0xA0;
+		cpu->DE = 0xFFFF;
+		while(cpu->PC < 2){
+			run_cpu(cpu);
+		}
+		result = cpu->memory[cpu->DE] == 0xA0;
+	}
+
+	{ // LD [HL+], A test
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[1] = {0x22};
+		memcpy(cpu->memory, mem, 1);
+
+		cpu->A = 0xBB;
+		cpu->HL = 0x0AAA;
+		u16 previous_HL = cpu->HL;
+		while(cpu->PC < 2){
+			run_cpu(cpu);
+		}
+		result = cpu->memory[previous_HL] == 0xBB;
+		result = (cpu->HL == previous_HL + 1);
+	}
+
+	{  // LD [HL-], A test
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[1] = {0x32};
+		memcpy(cpu->memory, mem, 1);
+
+		cpu->A = 0xDC;
+		cpu->HL = 0x0AAA;
+		u16 previous_HL = cpu->HL;
+		while(cpu->PC < 2){
+			run_cpu(cpu);
+		}
+		result = cpu->memory[previous_HL] == 0xDC;
+		result = (cpu->HL == previous_HL - 1);
+	}
+
+	show_test_result(test_name, result);
+}
+
 int main(){
 	ld_r16_imm16();
+	ld_memr16_a();
 
 	return 0;
 }
