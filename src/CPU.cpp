@@ -198,6 +198,66 @@ i32 run_cpu(CPU *cpu){
             return 4;
         }
 
+        case 0x03:
+        case 0x13:
+        case 0x23:{ // INC r16   for BC, DE, and HL
+            cpu->machine_cycle++;
+            if(cpu->machine_cycle == 1){
+                u8 reg = cpu->opcode & 0x30;
+                reg >>= 4;
+                assert(reg <= 2);
+
+                *cpu->wide_register_map[reg]++;
+            }
+            if(cpu->machine_cycle == 2){
+                cpu->opcode = fetch(cpu);
+                cpu->machine_cycle = 0;
+            }
+            return 4;
+        }
+
+        case 0x33:{ // INC SP
+            cpu->machine_cycle++;
+            if(cpu->machine_cycle == 1){
+                cpu->SP++;
+            }
+            if(cpu->machine_cycle == 2){
+                cpu->opcode = fetch(cpu);
+                cpu->machine_cycle = 0;
+            }
+            return 4;
+        }
+
+        case 0x0B:
+        case 0x1B:
+        case 0x2B:{ // DEC r16   for BC, DE, and HL
+            cpu->machine_cycle++;
+            if(cpu->machine_cycle == 1){
+                u8 reg = cpu->opcode & 0x30;
+                reg >>= 4;
+                assert(reg <= 2);
+
+                *cpu->wide_register_map[reg]--;
+            }
+            if(cpu->machine_cycle == 2){
+                cpu->opcode = fetch(cpu);
+                cpu->machine_cycle = 0;
+            }
+            return 4;
+        }
+
+        case 0x3B:{ // DEC SP
+            cpu->machine_cycle++;
+            if(cpu->machine_cycle == 1){
+                cpu->SP--;
+            }
+            if(cpu->machine_cycle == 2){
+                cpu->opcode = fetch(cpu);
+                cpu->machine_cycle = 0;
+            }
+            return 4;
+        }
+
         default:{
             printf("Opcode %X not implemented\n", cpu->opcode);
             return 4;

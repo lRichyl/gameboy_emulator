@@ -4,9 +4,9 @@
 
 void show_test_result(const char *test_name, bool result){
 	if(result)
-		printf("%s   PASSED\n", test_name);
+		printf("%s\tPASSED\n", test_name);
 	else
-		printf("%s   FAILED\n", test_name);
+		printf("%s\tFAILED\n", test_name);
 }
 
 void ld_r16_imm16(){
@@ -245,11 +245,99 @@ void ld_a16_sp(){
 	show_test_result(test_name, result);
 }
 
+void inc_r16(){
+	const char *test_name = "INC r16";
+	bool result = false;
+	{	// INC r16
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[1] = {0x13};
+		memcpy(cpu->memory, mem, 1);
+
+		cpu->DE = 0x05;
+		i32 cycles = 0;
+		while(cpu->PC < 2){
+			run_cpu(cpu);
+		}
+		result = cycles == 8;
+		result = cpu->DE == 0x06;
+		result = cpu->PC == 0x02;
+	}
+
+	{	// INC SP
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[1] = {0x33};
+		memcpy(cpu->memory, mem, 1);
+
+		cpu->SP = 0x0321;
+		i32 cycles = 0;
+		while(cpu->PC < 2){
+			cycles += run_cpu(cpu);
+		}
+
+		result = cycles == 8;
+		result = cpu->SP == 0x0322;
+		result = cpu->PC == 0x02;
+	}
+
+	show_test_result(test_name, result);
+}
+
+void dec_r16(){
+	const char *test_name = "DEC r16";
+	bool result = false;
+	{	// DEC r16
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[1] = {0x13};
+		memcpy(cpu->memory, mem, 1);
+
+		cpu->DE = 0x05;
+		i32 cycles = 0;
+		while(cpu->PC < 2){
+			run_cpu(cpu);
+		}
+		result = cycles == 8;
+		result = cpu->DE == 0x04;
+		result = cpu->PC == 0x02;
+	}
+
+	{	// DEC SP
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[1] = {0x33};
+		memcpy(cpu->memory, mem, 1);
+
+		cpu->SP = 0x0321;
+		i32 cycles = 0;
+		while(cpu->PC < 2){
+			cycles += run_cpu(cpu);
+		}
+
+		result = cycles == 8;
+		result = cpu->SP == 0x0320;
+		result = cpu->PC == 0x02;
+	}
+
+	show_test_result(test_name, result);
+}
+
 int main(){
 	ld_r16_imm16();
 	ld_memr16_a();
 	ld_a_memr16();
 	ld_a16_sp();
+	inc_r16();
+	dec_r16();
 
 	return 0;
 }
