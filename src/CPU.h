@@ -2,8 +2,13 @@
 
 #include "common.h"
 
+const i32 NUM_REGISTERS = 7;
+const i32 NUM_WIDE_REGISTERS = 4;
+
 struct CPU{
     u8 opcode;
+    bool do_first_fetch;
+    i32 machine_cycle;
     float clock_speed;
 
     union{
@@ -45,6 +50,9 @@ struct CPU{
     u16 PC; // Program counter
 
     u8 memory[0x10000];
+
+    u16 *wide_register_map[NUM_WIDE_REGISTERS];
+    u8  *register_map[NUM_REGISTERS];
 };
 
 enum Flag {
@@ -55,6 +63,5 @@ enum Flag {
 };
 
 void init_cpu(CPU *cpu);
-void decode(CPU *cpu);
-i32 execute_instruction(CPU *cpu);
-void fetch(CPU *cpu);
+i32 run_cpu(CPU *cpu);
+u8 fetch(CPU *cpu);

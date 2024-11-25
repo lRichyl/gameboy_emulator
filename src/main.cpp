@@ -7,7 +7,7 @@
 #include "SDL3/SDL.h"
 
 int main(){
-	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_AUDIO) < 0) {
+	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_AUDIO) == 0) {
         printf("SDL2 Initialization failed: %s", SDL_GetError());
         return 0;
     }

@@ -8,6 +8,7 @@ const i32 WINDOW_HEIGHT = 144;
 struct Gameboy{
     CPU cpu;
     // PPU ppu;
+    i32 cycle_count;
 };
 
 void init_gameboy(Gameboy *gmb);

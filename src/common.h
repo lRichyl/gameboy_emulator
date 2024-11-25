@@ -15,15 +15,16 @@ typedef i32 b32;
 typedef float f32;
 typedef double f64;
 
+#define BUILD_SLOW 1
 #if BUILD_SLOW
-#define Assert(Expression) if(!(Expression)) {*(int *)0 = 0;}
+#define assert(expression) if(!(expression)) {*(int *)0 = 0;}
 #else
-#define Assert(Expression)
+#define assert(Expression)
 #endif
 
-#define Kilobytes(Value) ((Value) * 1024)
-#define Megabytes(Value) (Kilobytes(Value) * 1024)
-#define Gigabytes(Value) (Megabytes(Value) * 1024)
-#define Terabytes(Value) (Gigabytes(Value) * 1024)
+#define kilobytes(value) ((value) * 1024)
+#define megabytes(value) (kilobytes(value) * 1024)
+#define gigabytes(value) (megabytes(value) * 1024)
+#define terabytes(value) (gigabytes(value) * 1024)
 
-#define ArraySize(Array) (sizeof(Array) / sizeof((Array)[0]))
+#define ArraySize(array) (sizeof(array) / sizeof((array)[0]))
