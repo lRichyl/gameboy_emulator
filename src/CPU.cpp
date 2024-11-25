@@ -71,6 +71,38 @@ static u8 sum_and_set_flags(CPU *cpu, u8 summand_left, u8 summand_right, b32 che
     return (u8)result;
 }
 
+static u8 substract_and_set_flags(CPU *cpu, u8 minuend, u8 sustrahend, b32 check_carry = false, bool check_zero = false){
+    u8 result = minuend - sustrahend;
+
+    if(check_zero){
+        if(u8(result) == 0)     
+            set_flag(cpu, FLAG_ZERO);
+        else
+            unset_flag(cpu, FLAG_ZERO);
+    }
+
+    set_flag(cpu, FLAG_SUB);
+  
+    u8 nibble_minuend    = minuend    & 0x0F;
+    u8 nibble_sustrahend = sustrahend & 0x0F;
+
+    if(nibble_sustrahend > nibble_minuend) 
+        set_flag(cpu, FLAG_HALFCARRY);
+    else
+        unset_flag(cpu, FLAG_HALFCARRY);
+
+    if(check_carry){
+        if(sustrahend > minuend){
+            if(minuend < sustrahend) 
+                set_flag(cpu, FLAG_CARRY);
+            else
+                unset_flag(cpu, FLAG_CARRY);
+        }
+    }
+
+    return result;
+}
+
 static u8 imm_low;
 static u8 imm_high;
 static u16 imm;
@@ -376,6 +408,45 @@ i32 run_cpu(CPU *cpu){
             return 4;
         }
 
+        case 0x05:
+        case 0x15:
+        case 0x25:
+        case 0x0D:
+        case 0x1D:
+        case 0x2D:
+        case 0x3D:{ // DEC r8, for B,C,D,E,H,L
+            u8 reg = cpu->opcode & 0x38;
+            reg >>= 3;
+            assert(reg <= 7);
+
+            if(reg < 6)
+                (*cpu->register_map[reg]) = substract_and_set_flags(cpu, (*cpu->register_map[reg]), 1, false, true);
+            else if(reg == 7){
+                cpu->A = substract_and_set_flags(cpu, cpu->A, 1, false, true);
+            }
+
+            cpu->opcode = fetch(cpu);
+            cpu->machine_cycle = 0;
+
+            return 4;
+        }
+
+        case 0x35:{ // DEC [HL]
+            cpu->machine_cycle++;
+            if(cpu->machine_cycle == 1){
+                mem_value = read_mem(cpu, cpu->HL);
+            }
+            else if(cpu->machine_cycle == 2){
+                mem_value = substract_and_set_flags(cpu, mem_value, 1, false, true);
+                write_mem(cpu, cpu->HL, mem_value);
+            }
+            else if(cpu->machine_cycle == 3){
+                cpu->opcode = fetch(cpu);
+                cpu->machine_cycle = 0;
+            }
+
+            return 4;
+        }
 
         default:{
             printf("Opcode %X not implemented\n", cpu->opcode);

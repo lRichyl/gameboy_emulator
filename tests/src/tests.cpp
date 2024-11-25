@@ -471,6 +471,108 @@ void inc_memhl(){
 	show_test_result(test_name, result);
 }
 
+void dec_r8(){
+	const char *test_name = "DEC r8";
+	bool result = true;
+	{	// DEC B
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[1] = {0x05};
+		memcpy(cpu->memory, mem, 1);
+
+		cpu->BC = 0xA5BB;
+		while(cpu->PC < 2){
+			run_cpu(cpu);
+		}
+		check_result(&result, cpu->B == 0xA4);
+		check_result(&result, cpu->BC == 0xA4BB);
+		check_result(&result, (cpu->flags) & (FLAG_SUB));
+		check_result(&result, cpu->PC == 0x02);
+	}
+
+	{	// DEC E
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[1] = {0x1D};
+		memcpy(cpu->memory, mem, 1);
+
+		cpu->DE = 0x1000;
+		while(cpu->PC < 2){
+			run_cpu(cpu);
+		}
+		check_result(&result, cpu->E == 0xFF);
+		check_result(&result, cpu->DE == 0x10FF);
+		check_result(&result, (cpu->flags) & (FLAG_HALFCARRY|FLAG_SUB));
+		check_result(&result, cpu->PC == 0x02);
+	}
+
+	{	// DEC L
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[1] = {0x2D};
+		memcpy(cpu->memory, mem, 1);
+
+		cpu->HL = 0x10FF;
+		while(cpu->PC < 2){
+			run_cpu(cpu);
+		}
+		check_result(&result, cpu->L == 0xFE);
+		check_result(&result, cpu->HL == 0x10FE);
+		check_result(&result, (cpu->flags) & (FLAG_SUB));
+		check_result(&result, cpu->PC == 0x02);
+	}
+
+	{	// DEC A
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[1] = {0x3D};
+		memcpy(cpu->memory, mem, 1);
+
+		cpu->A = 0x01;
+		while(cpu->PC < 2){
+			run_cpu(cpu);
+		}
+		check_result(&result, cpu->A == 0x00);
+		check_result(&result, (cpu->flags) & (FLAG_ZERO|FLAG_SUB));
+		check_result(&result, cpu->PC == 0x02);
+	}
+
+	show_test_result(test_name, result);
+}
+
+void dec_memhl(){
+	const char *test_name = "DEC [HL]";
+	bool result = true;
+	{	// INC [HL]
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[1] = {0x35};
+		memcpy(cpu->memory, mem, 1);
+
+		cpu->HL = 0xAABB;
+		cpu->memory[cpu->HL] = 0x00;
+		u8 previous_mem = cpu->memory[cpu->HL];
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		check_result(&result, cpu->memory[cpu->HL] == u8(previous_mem - 1));
+		check_result(&result, (cpu->flags) & (FLAG_HALFCARRY|FLAG_SUB));
+		check_result(&result, cpu->PC == 0x03);
+	}
+
+	show_test_result(test_name, result);
+}
+
 int main(){
 	ld_r16_imm16();
 	ld_memr16_a();
@@ -481,6 +583,8 @@ int main(){
 	add_hl_r16();
 	inc_r8();
 	inc_memhl();
+	dec_r8();
+	dec_memhl();
 
 	return 0;
 }
