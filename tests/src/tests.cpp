@@ -143,6 +143,8 @@ void ld_memr16_a(){
 	show_test_result(test_name, result);
 }
 
+
+
 void ld_a_memr16(){
 	const char *test_name = "LD A, [r16]";
 	bool result = false;
@@ -221,10 +223,33 @@ void ld_a_memr16(){
 	show_test_result(test_name, result);
 }
 
+void ld_a16_sp(){
+	const char *test_name = "LD a16, SP";
+	bool result = false;
+	{	// LD A, [BC] test
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[3] = {0x08, 0x7F, 0xFF};
+		memcpy(cpu->memory, mem, 3);
+
+		cpu->SP = 0x1020;
+		while(cpu->PC < 6){
+			run_cpu(cpu);
+		}
+		result = cpu->memory[0xFF7F] == 0x20;
+		result = cpu->memory[0xFF80] == 0x10;
+		result = cpu->PC == 0x06;
+	}
+	show_test_result(test_name, result);
+}
+
 int main(){
 	ld_r16_imm16();
 	ld_memr16_a();
 	ld_a_memr16();
+	ld_a16_sp();
 
 	return 0;
 }

@@ -37,6 +37,7 @@ u8 read_mem(CPU *cpu, u16 address){
 static u8 imm_low;
 static u8 imm_high;
 static u16 imm;
+static u8 mem_value;
 
 i32 run_cpu(CPU *cpu){
     if(cpu->do_first_fetch){
@@ -48,7 +49,7 @@ i32 run_cpu(CPU *cpu){
 
     switch(cpu->opcode){
         case 0x00:{  // NOP
-
+            cpu->opcode = fetch(cpu);
             return 4;
         }
 
@@ -131,9 +132,11 @@ i32 run_cpu(CPU *cpu){
                 u8 reg = cpu->opcode & 0x30;
                 reg >>= 4;
                 assert(reg <= 1);
-                cpu->A = read_mem(cpu, *cpu->wide_register_map[reg]);
+                mem_value = read_mem(cpu, *cpu->wide_register_map[reg]);
             }
             else if(cpu->machine_cycle == 2){
+                cpu->A = mem_value;
+
                 cpu->opcode = fetch(cpu);
                 cpu->machine_cycle = 0;
             }
@@ -144,26 +147,54 @@ i32 run_cpu(CPU *cpu){
         case 0x2A:{ // LD A, [HL+]
             cpu->machine_cycle++;
             if(cpu->machine_cycle == 1){
-                cpu->A = read_mem(cpu, cpu->HL);
+                mem_value = read_mem(cpu, cpu->HL);
                 cpu->HL++;
             }
             else if(cpu->machine_cycle == 2){
+                cpu->A = mem_value;
+
                 cpu->opcode = fetch(cpu);
                 cpu->machine_cycle = 0;
             }
             return 4;
         }
-        
+
         case 0x3A:{  // LD A, [HL+]
             cpu->machine_cycle++;
             if(cpu->machine_cycle == 1){
-                cpu->A = read_mem(cpu, cpu->HL);
+                mem_value = read_mem(cpu, cpu->HL);
                 cpu->HL--;
             }
             else if(cpu->machine_cycle == 2){
+                cpu->A = mem_value;
+
                 cpu->opcode = fetch(cpu);
                 cpu->machine_cycle = 0;
             }
+            return 4;
+        }
+
+        case 0x08:{ // LD [a16], SP
+            cpu->machine_cycle++;
+            if(cpu->machine_cycle == 1){
+               imm_low = fetch(cpu);
+            }
+            if(cpu->machine_cycle == 2){
+               imm_high = fetch(cpu);
+            }
+            if(cpu->machine_cycle == 3){
+               imm = imm = (imm_high << 8) | imm_low;
+               write_mem(cpu, imm, cpu->SP | 0x0F);
+               imm++;
+            }
+            if(cpu->machine_cycle == 4){
+               write_mem(cpu, imm, (cpu->SP | 0xF0) >> 4);
+            }
+            else if(cpu->machine_cycle == 5){
+                cpu->opcode = fetch(cpu);
+                cpu->machine_cycle = 0;
+            }
+
             return 4;
         }
 
