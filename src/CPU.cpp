@@ -30,6 +30,10 @@ void write_mem(CPU *cpu, u16 address, u8 value){
     cpu->memory[address] = value;
 }
 
+u8 read_mem(CPU *cpu, u16 address){
+    return cpu->memory[address];
+}
+
 static u8 imm_low;
 static u8 imm_high;
 static u16 imm;
@@ -111,6 +115,49 @@ i32 run_cpu(CPU *cpu){
             cpu->machine_cycle++;
             if(cpu->machine_cycle == 1){
                 write_mem(cpu, cpu->HL, cpu->A);
+                cpu->HL--;
+            }
+            else if(cpu->machine_cycle == 2){
+                cpu->opcode = fetch(cpu);
+                cpu->machine_cycle = 0;
+            }
+            return 4;
+        }
+
+        case 0x0A:
+        case 0x1A:{ // LD A, [r16]   only for BC and DE
+            cpu->machine_cycle++;
+            if(cpu->machine_cycle == 1){
+                u8 reg = cpu->opcode & 0x30;
+                reg >>= 4;
+                assert(reg <= 1);
+                cpu->A = read_mem(cpu, *cpu->wide_register_map[reg]);
+            }
+            else if(cpu->machine_cycle == 2){
+                cpu->opcode = fetch(cpu);
+                cpu->machine_cycle = 0;
+            }
+
+            return 4;
+        }
+
+        case 0x2A:{ // LD A, [HL+]
+            cpu->machine_cycle++;
+            if(cpu->machine_cycle == 1){
+                cpu->A = read_mem(cpu, cpu->HL);
+                cpu->HL++;
+            }
+            else if(cpu->machine_cycle == 2){
+                cpu->opcode = fetch(cpu);
+                cpu->machine_cycle = 0;
+            }
+            return 4;
+        }
+        
+        case 0x3A:{  // LD A, [HL+]
+            cpu->machine_cycle++;
+            if(cpu->machine_cycle == 1){
+                cpu->A = read_mem(cpu, cpu->HL);
                 cpu->HL--;
             }
             else if(cpu->machine_cycle == 2){

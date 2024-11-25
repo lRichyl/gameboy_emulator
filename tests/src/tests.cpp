@@ -82,6 +82,7 @@ void ld_memr16_a(){
 			run_cpu(cpu);
 		}
 		result = cpu->memory[cpu->BC] == 0x01;
+		result = cpu->PC == 0x02;
 	}
 
 	{	// LD [DE], A test
@@ -98,6 +99,7 @@ void ld_memr16_a(){
 			run_cpu(cpu);
 		}
 		result = cpu->memory[cpu->DE] == 0xA0;
+		result = cpu->PC == 0x02;
 	}
 
 	{ // LD [HL+], A test
@@ -116,6 +118,7 @@ void ld_memr16_a(){
 		}
 		result = cpu->memory[previous_HL] == 0xBB;
 		result = (cpu->HL == previous_HL + 1);
+		result = cpu->PC == 0x02;
 	}
 
 	{  // LD [HL-], A test
@@ -134,6 +137,85 @@ void ld_memr16_a(){
 		}
 		result = cpu->memory[previous_HL] == 0xDC;
 		result = (cpu->HL == previous_HL - 1);
+		result = cpu->PC == 0x02;
+	}
+
+	show_test_result(test_name, result);
+}
+
+void ld_a_memr16(){
+	const char *test_name = "LD A, [r16]";
+	bool result = false;
+	{	// LD A, [BC] test
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[1] = {0x0A};
+		memcpy(cpu->memory, mem, 1);
+
+		cpu->BC = 0x07FF;
+		cpu->memory[cpu->BC] = 0x01;
+		while(cpu->PC < 2){
+			run_cpu(cpu);
+		}
+		result = cpu->A == 0x01;
+		result = cpu->PC == 0x02;
+	}
+
+	{	// LD A, [DE] test
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[1] = {0x12};
+		memcpy(cpu->memory, mem, 1);
+
+		cpu->DE = 0xFFFF;
+		cpu->memory[cpu->DE] = 0xA0;
+		while(cpu->PC < 2){
+			run_cpu(cpu);
+		}
+		result = cpu->A == 0xA0;
+		result = cpu->PC == 0x02;
+	}
+
+	{ // LD A, [HL+] test
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[1] = {0x22};
+		memcpy(cpu->memory, mem, 1);
+
+		cpu->HL = 0x0AAA;
+		cpu->memory[cpu->HL] = 0xBB;
+		u16 previous_HL = cpu->HL;
+		while(cpu->PC < 2){
+			run_cpu(cpu);
+		}
+		result = cpu->A == 0xBB;
+		result = (cpu->HL == previous_HL + 1);
+		result = cpu->PC == 0x02;
+	}
+
+	{  // LD A, [HL-] test
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[1] = {0x32};
+		memcpy(cpu->memory, mem, 1);
+
+		cpu->HL = 0x0AAA;
+		cpu->memory[cpu->HL] = 0xDC;
+		u16 previous_HL = cpu->HL;
+		while(cpu->PC < 2){
+			run_cpu(cpu);
+		}
+		result = cpu->A == 0xDC;
+		result = (cpu->HL == previous_HL - 1);
+		result = cpu->PC == 0x02;
 	}
 
 	show_test_result(test_name, result);
@@ -142,6 +224,7 @@ void ld_memr16_a(){
 int main(){
 	ld_r16_imm16();
 	ld_memr16_a();
+	ld_a_memr16();
 
 	return 0;
 }
