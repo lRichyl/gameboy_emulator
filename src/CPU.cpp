@@ -103,10 +103,13 @@ static u8 substract_and_set_flags(CPU *cpu, u8 minuend, u8 sustrahend, b32 check
     return result;
 }
 
+static u8 immr8;
 static u8 imm_low;
 static u8 imm_high;
 static u16 imm;
+
 static u8 mem_value;
+
 
 i32 run_cpu(CPU *cpu){
     if(cpu->do_first_fetch){
@@ -441,6 +444,53 @@ i32 run_cpu(CPU *cpu){
                 write_mem(cpu, cpu->HL, mem_value);
             }
             else if(cpu->machine_cycle == 3){
+                cpu->opcode = fetch(cpu);
+                cpu->machine_cycle = 0;
+            }
+
+            return 4;
+        }
+
+        case 0x06:
+        case 0x16:
+        case 0x26:
+        case 0x0E:
+        case 0x1E:
+        case 0x2E:
+        case 0x3E:{ // LD r8, imm8
+            cpu->machine_cycle++;
+            if(cpu->machine_cycle == 1){
+                immr8 = fetch(cpu);    
+            }
+            else if(cpu->machine_cycle == 2){
+                u8 reg = cpu->opcode & 0x38;
+                reg >>= 3;
+                assert(reg <= 7);
+
+                if(reg < 6){
+                    (*cpu->register_map[reg]) = immr8;
+                }
+                else if(reg == 7){
+                    cpu->A = immr8;
+                }
+
+
+                cpu->opcode = fetch(cpu);
+                cpu->machine_cycle = 0;
+            }
+
+            return 4;
+        }
+
+        case 0x36:{ // LD [HL], imm8
+            cpu->machine_cycle++;
+            if(cpu->machine_cycle == 1){
+                immr8 = fetch(cpu);    
+            }
+            else if(cpu->machine_cycle == 2){
+                write_mem(cpu, cpu->HL, immr8);
+
+            }else if(cpu->machine_cycle == 3){
                 cpu->opcode = fetch(cpu);
                 cpu->machine_cycle = 0;
             }
