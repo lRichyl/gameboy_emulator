@@ -628,6 +628,128 @@ i32 run_cpu(CPU *cpu){
             return 4;
         }
 
+        case 0x18:{ // JR imm8
+            cpu->machine_cycle++;
+            if(cpu->machine_cycle == 1){
+                immr8 = fetch(cpu);    
+            }
+            else if(cpu->machine_cycle == 2){
+                i8 imm8s = (i8)immr8;
+                u16 target = cpu->PC - 1 + imm8s;
+                cpu->PC = target;
+
+            }else if(cpu->machine_cycle == 3){
+                cpu->opcode = fetch(cpu);
+                cpu->machine_cycle = 0;
+            }
+
+            return 4;
+        }
+
+        case 0x20:{ // JR NZ, imm8
+            cpu->machine_cycle++;
+            if(cpu->machine_cycle == 1){
+                immr8 = fetch(cpu);    
+            }
+            else if(cpu->machine_cycle == 2){
+                if(!(cpu->flags & FLAG_ZERO)){
+                    i8 imm8s = (i8)immr8;
+                    u16 target = cpu->PC - 1 + imm8s;
+                    cpu->PC = target;
+                }
+                else{
+                    cpu->opcode = fetch(cpu);
+                    cpu->machine_cycle = 0;    
+                }
+
+            }else if(cpu->machine_cycle == 3){
+                cpu->opcode = fetch(cpu);
+                cpu->machine_cycle = 0;
+            }
+
+            return 4;
+        }
+
+        case 0x30:{ // JR NC, imm8
+            cpu->machine_cycle++;
+            if(cpu->machine_cycle == 1){
+                immr8 = fetch(cpu);    
+            }
+            else if(cpu->machine_cycle == 2){
+                if(!(cpu->flags & FLAG_CARRY)){
+                    i8 imm8s = (i8)immr8;
+                    u16 target = cpu->PC - 1 + imm8s;
+                    cpu->PC = target;
+                }
+                else{
+                    cpu->opcode = fetch(cpu);
+                    cpu->machine_cycle = 0;    
+                }
+
+            }else if(cpu->machine_cycle == 3){
+                cpu->opcode = fetch(cpu);
+                cpu->machine_cycle = 0;
+            }
+
+            return 4;
+        }
+
+        case 0x28:{ // JR Z, imm8
+            cpu->machine_cycle++;
+            if(cpu->machine_cycle == 1){
+                immr8 = fetch(cpu);    
+            }
+            else if(cpu->machine_cycle == 2){
+                if((cpu->flags & FLAG_ZERO)){
+                    i8 imm8s = (i8)immr8;
+                    u16 target = cpu->PC - 1 + imm8s;
+                    cpu->PC = target;
+                }
+                else{
+                    cpu->opcode = fetch(cpu);
+                    cpu->machine_cycle = 0;    
+                }
+
+            }else if(cpu->machine_cycle == 3){
+                cpu->opcode = fetch(cpu);
+                cpu->machine_cycle = 0;
+            }
+
+            return 4;
+        }
+
+        case 0x38:{ // JR C, imm8
+            cpu->machine_cycle++;
+            if(cpu->machine_cycle == 1){
+                immr8 = fetch(cpu);    
+            }
+            else if(cpu->machine_cycle == 2){
+                if((cpu->flags & FLAG_CARRY)){
+                    i8 imm8s = (i8)immr8;
+                    u16 target = cpu->PC - 1 + imm8s;
+                    cpu->PC = target;
+                }
+                else{
+                    cpu->opcode = fetch(cpu);
+                    cpu->machine_cycle = 0;    
+                }
+
+            }else if(cpu->machine_cycle == 3){
+                cpu->opcode = fetch(cpu);
+                cpu->machine_cycle = 0;
+            }
+
+            return 4;
+        }
+
+        // TODO
+        // case 0x10:{ // STOP
+        //     immr8 = fetch(cpu);
+
+        //     cpu->opcode = fetch(cpu);
+        //     cpu->machine_cycle = 0;
+        //     return 4;
+        // }
 
         default:{
             printf("Opcode %X not implemented\n", cpu->opcode);

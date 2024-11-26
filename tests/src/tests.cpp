@@ -949,6 +949,40 @@ void ccf(){
 	show_test_result(test_name, result);
 }
 
+void jr_imm8(){
+	const char *test_name = "JR, e8";
+	bool result = true;
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[2] = {0x18, 0x0A};
+		memcpy(cpu->memory, mem, 2);
+		while(cpu->PC < 4){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, cpu->PC == 0x0B);
+	}
+
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[2] = {0x18, 0xFF};
+		memcpy(cpu->memory, mem, 2);
+		for(int i = 0; i < 3; i++){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, cpu->PC == 0x00);
+	}
+
+	show_test_result(test_name, result);
+}
+
 int main(){
 	ld_r16_imm16();
 	ld_memr16_a();
@@ -971,6 +1005,7 @@ int main(){
 	cpl();
 	scf();
 	ccf();
+	jr_imm8();
 
 	return 0;
 }
