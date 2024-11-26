@@ -950,7 +950,7 @@ void ccf(){
 }
 
 void jr_imm8(){
-	const char *test_name = "JR, e8";
+	const char *test_name = "JR e8";
 	bool result = true;
 	{   
 		Gameboy gmb = {};
@@ -983,6 +983,98 @@ void jr_imm8(){
 	show_test_result(test_name, result);
 }
 
+void ld_r8_r8(){
+	const char *test_name = "LD r8, r8";
+	bool result = true;
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[] = {0x43};
+		cpu->E = 0x45;
+		cpu->B = 0x00;
+		memcpy(cpu->memory, mem, 1);
+		while(cpu->PC < 2){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, cpu->B  == 0x45);
+		check_result(&result, cpu->PC == 0x02);
+	}
+
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[] = {0x6F};
+		cpu->A = 0xBB;
+		cpu->L = 0x00;
+		memcpy(cpu->memory, mem, 1);
+		while(cpu->PC < 2){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, cpu->L  == 0xBB);
+		check_result(&result, cpu->PC == 0x02);
+	}
+
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[] = {0x79};
+		cpu->A = 0x00;
+		cpu->C = 0x69;
+		memcpy(cpu->memory, mem, 1);
+		while(cpu->PC < 2){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, cpu->A  == 0x69);
+		check_result(&result, cpu->PC == 0x02);
+	}
+
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[] = {0x74};
+		cpu->HL = 0x2000;
+		cpu->memory[cpu->HL] = 0x00;
+		memcpy(cpu->memory, mem, 1);
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, cpu->memory[cpu->HL] == 0x20);
+		check_result(&result, cpu->PC == 0x03);
+	}
+
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[] = {0x7E};
+		cpu->HL = 0x2000;
+		cpu->memory[cpu->HL] = 0x25;
+		cpu->A = 0x00;
+		memcpy(cpu->memory, mem, 1);
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, cpu->A == 0x25);
+		check_result(&result, cpu->PC == 0x03);
+	}
+
+	show_test_result(test_name, result);
+}
+
 int main(){
 	ld_r16_imm16();
 	ld_memr16_a();
@@ -1006,6 +1098,7 @@ int main(){
 	scf();
 	ccf();
 	jr_imm8();
+	ld_r8_r8();
 
 	return 0;
 }

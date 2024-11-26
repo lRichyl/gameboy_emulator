@@ -2,7 +2,7 @@
 
 #include "common.h"
 
-const i32 NUM_REGISTERS = 7;
+const i32 NUM_REGISTERS = 8;
 const i32 NUM_WIDE_REGISTERS = 4;
 
 struct CPU{
