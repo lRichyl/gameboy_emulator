@@ -34,15 +34,15 @@ static u8 read_mem(CPU *cpu, u16 address){
     return cpu->memory[address];
 }
 
-static void set_flag(CPU *cpu, Flag flag){
+void set_flag(CPU *cpu, Flag flag){
     cpu->flags = cpu->flags | flag;
 }
 
-static void unset_flag(CPU *cpu, Flag flag){
+void unset_flag(CPU *cpu, Flag flag){
     cpu->flags = cpu->flags & ~(flag);
 }
 
-static u8 sum_and_set_flags(CPU *cpu, u8 summand_left, u8 summand_right, b32 check_carry = false, bool check_zero = false){
+u8 sum_and_set_flags(CPU *cpu, u8 summand_left, u8 summand_right, b32 check_carry = false, bool check_zero = false){
     u16 result = (u16)summand_left + (u16)summand_right;
     
     if(check_zero){
@@ -122,6 +122,8 @@ i32 run_cpu(CPU *cpu){
     switch(cpu->opcode){
         case 0x00:{  // NOP
             cpu->opcode = fetch(cpu);
+            cpu->machine_cycle = 0;
+
             return 4;
         }
 
@@ -497,6 +499,135 @@ i32 run_cpu(CPU *cpu){
 
             return 4;
         }
+
+        case 0x07:{ // RLCA
+            u8 previous_bit_7 = (cpu->A & 0x80) >> 7;
+            previous_bit_7 ? set_flag(cpu, FLAG_CARRY) : unset_flag(cpu, FLAG_CARRY);
+            cpu->A <<= 1;
+            cpu->A = (cpu->A & (~(0x01))) | previous_bit_7;
+
+            unset_flag(cpu, FLAG_ZERO);
+            unset_flag(cpu, FLAG_SUB);
+            unset_flag(cpu, FLAG_HALFCARRY);
+
+            cpu->opcode = fetch(cpu);
+            cpu->machine_cycle = 0;
+            return 4;
+        }
+
+        case 0x0F:{ // RRCA
+            u8 previous_bit_0 = (cpu->A & 0x01);
+            previous_bit_0 ? set_flag(cpu, FLAG_CARRY) : unset_flag(cpu, FLAG_CARRY);
+            cpu->A >>= 1;
+            cpu->A = (cpu->A & (~(0x80))) | (previous_bit_0 << 7);
+
+            unset_flag(cpu, FLAG_ZERO);
+            unset_flag(cpu, FLAG_SUB);
+            unset_flag(cpu, FLAG_HALFCARRY);
+
+            cpu->opcode = fetch(cpu);
+            cpu->machine_cycle = 0;
+
+            return 4;
+        }
+
+        case 0x17:{ // RLA
+            u8 previous_bit_7 = (cpu->A & 0x80) >> 7;
+            
+            cpu->A <<= 1;
+            cpu->A = (cpu->A & (~(0x01))) | ((cpu->flags & FLAG_CARRY) >> 4);
+
+            previous_bit_7 ? set_flag(cpu, FLAG_CARRY) : unset_flag(cpu, FLAG_CARRY);
+
+            unset_flag(cpu, FLAG_ZERO);
+            unset_flag(cpu, FLAG_SUB);
+            unset_flag(cpu, FLAG_HALFCARRY);
+
+            cpu->opcode = fetch(cpu);
+            cpu->machine_cycle = 0;
+
+            return 4;
+        }
+
+        case 0x1F:{ // RRA
+            u8 previous_bit_0 = (cpu->A & 0x01);
+            
+            cpu->A >>= 1;
+            cpu->A = (cpu->A & (~(0x80))) | ((cpu->flags & FLAG_CARRY) << 3);
+
+            previous_bit_0 ? set_flag(cpu, FLAG_CARRY) : unset_flag(cpu, FLAG_CARRY);
+
+            unset_flag(cpu, FLAG_ZERO);
+            unset_flag(cpu, FLAG_SUB);
+            unset_flag(cpu, FLAG_HALFCARRY);
+
+            cpu->opcode = fetch(cpu);
+            cpu->machine_cycle = 0;
+
+            return 4;
+        }
+
+        case 0x27:{ // DAA
+            if((cpu->A & 0x0F) > 9 || cpu->flags & FLAG_HALFCARRY){
+                cpu->A += 6;
+            }
+
+            unset_flag(cpu, FLAG_HALFCARRY);
+
+            if(cpu->A > 0x99 || cpu->flags & FLAG_CARRY) {
+                cpu->A += 0x60;
+                set_flag(cpu, FLAG_CARRY);
+            }
+            else{
+                unset_flag(cpu, FLAG_CARRY);
+            }
+
+            if(cpu->A == 0)     
+                set_flag(cpu, FLAG_ZERO);
+            else
+                unset_flag(cpu, FLAG_ZERO);
+
+            cpu->opcode = fetch(cpu);
+            cpu->machine_cycle = 0;
+
+            return 4;
+        }
+
+        case 0x2F:{ // CPL
+            cpu->A = ~cpu->A;
+
+            set_flag(cpu, FLAG_HALFCARRY);
+            set_flag(cpu, FLAG_SUB);
+
+            cpu->opcode = fetch(cpu);
+            cpu->machine_cycle = 0;
+
+            return 4;
+        }
+
+        case 0x37:{ // SCF
+            set_flag(cpu, FLAG_CARRY);
+
+            unset_flag(cpu, FLAG_HALFCARRY);
+            unset_flag(cpu, FLAG_SUB);
+
+            cpu->opcode = fetch(cpu);
+            cpu->machine_cycle = 0;
+            return 4;
+        }
+
+        case 0x3F:{ // CCF
+            (cpu->flags & FLAG_CARRY) ? unset_flag(cpu, FLAG_CARRY) : set_flag(cpu, FLAG_CARRY);
+
+            unset_flag(cpu, FLAG_HALFCARRY);
+            unset_flag(cpu, FLAG_SUB);
+
+            cpu->opcode = fetch(cpu);
+            cpu->machine_cycle = 0;
+
+            return 4;
+        }
+
 
         default:{
             printf("Opcode %X not implemented\n", cpu->opcode);

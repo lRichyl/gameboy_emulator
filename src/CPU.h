@@ -65,3 +65,7 @@ enum Flag {
 void init_cpu(CPU *cpu);
 i32 run_cpu(CPU *cpu);
 u8 fetch(CPU *cpu);
+
+void set_flag(CPU *cpu, Flag flag);
+void unset_flag(CPU *cpu, Flag flag);
+u8 sum_and_set_flags(CPU *cpu, u8 summand_left, u8 summand_right, b32 check_carry, bool check_zero);
