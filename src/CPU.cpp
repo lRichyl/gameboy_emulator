@@ -1000,6 +1000,129 @@ i32 run_cpu(CPU *cpu){
             break;
         }
 
+        case 0xC0:{
+            switch(cpu->opcode){
+                case 0xC6:{ // ADD A, imm8
+                    if(cpu->machine_cycle == 1){
+                        immr8 = fetch(cpu);
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        cpu->A = sum_and_set_flags(cpu, cpu->A, immr8, true, true);     
+                        go_to_next_instruction(cpu);
+                    }
+
+                    return 4;
+                }
+
+                case 0xCE:{ // ADC A, imm8
+                    if(cpu->machine_cycle == 1){
+                        immr8 = fetch(cpu);
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        u8 carry = (cpu->flags & FLAG_CARRY) >> 4;
+                        cpu->A = sum_and_set_flags(cpu, cpu->A, immr8 + carry, true, true);     
+                        go_to_next_instruction(cpu);
+                    }
+
+                    return 4;
+                }
+
+                case 0xD6:{ // SUB A, imm8
+                    if(cpu->machine_cycle == 1){
+                        immr8 = fetch(cpu);
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        cpu->A = substract_and_set_flags(cpu, cpu->A, immr8, true, true);     
+                        go_to_next_instruction(cpu);
+                    }
+
+                    return 4;
+                }
+
+                case 0xDE:{ // SBC A, imm8
+                    if(cpu->machine_cycle == 1){
+                        immr8 = fetch(cpu);
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        u8 carry = (cpu->flags & FLAG_CARRY) >> 4;
+                        cpu->A = substract_and_set_flags(cpu, cpu->A, immr8 + carry, true, true);     
+                        go_to_next_instruction(cpu);
+                    }
+
+                    return 4;
+                }
+
+                case 0xE6:{ // AND A, imm8
+                    if(cpu->machine_cycle == 1){
+                        immr8 = fetch(cpu);
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        cpu->A = cpu->A & immr8;
+
+                        cpu->A == 0 ? set_flag(cpu, FLAG_ZERO) : unset_flag(cpu, FLAG_ZERO);
+                        unset_flag(cpu, FLAG_CARRY);
+                        unset_flag(cpu, FLAG_SUB);
+                        set_flag(cpu, FLAG_HALFCARRY);
+
+                        go_to_next_instruction(cpu);
+                    }
+
+                    return 4;
+                }
+
+                case 0xEE:{ // XOR A, imm8
+                    if(cpu->machine_cycle == 1){
+                        immr8 = fetch(cpu);
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        cpu->A = cpu->A ^ immr8;
+                        
+                        cpu->A == 0 ? set_flag(cpu, FLAG_ZERO) : unset_flag(cpu, FLAG_ZERO);
+                        unset_flag(cpu, FLAG_CARRY);
+                        unset_flag(cpu, FLAG_SUB);
+                        unset_flag(cpu, FLAG_HALFCARRY);
+
+                        go_to_next_instruction(cpu);
+                    }
+
+                    return 4;
+                }
+
+                case 0xF6:{ // OR A, imm8
+                    if(cpu->machine_cycle == 1){
+                        immr8 = fetch(cpu);
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        cpu->A = cpu->A | immr8;
+                        
+                        cpu->A == 0 ? set_flag(cpu, FLAG_ZERO) : unset_flag(cpu, FLAG_ZERO);
+                        unset_flag(cpu, FLAG_CARRY);
+                        unset_flag(cpu, FLAG_SUB);
+                        unset_flag(cpu, FLAG_HALFCARRY);
+
+                        go_to_next_instruction(cpu);
+                    }
+
+                    return 4;
+                }
+
+                case 0xFE:{ // CP A, imm8
+                    if(cpu->machine_cycle == 1){
+                        immr8 = fetch(cpu);
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        substract_and_set_flags(cpu, cpu->A, immr8, true, true);  
+
+                        go_to_next_instruction(cpu);
+                    }
+
+                    return 4;
+                }
+            }
+
+            break;
+        }
+
         default:{
             printf("Opcode %X not implemented\n", cpu->opcode);
             return 4;
