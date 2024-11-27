@@ -104,6 +104,20 @@ static u8 substract_and_set_flags(CPU *cpu, u8 minuend, u8 sustrahend, b32 check
     return result;
 }
 
+u8 pop_stack(CPU *cpu){
+    assert(cpu->SP > 0);
+    cpu->SP++;
+    u8 value = read_mem(cpu, cpu->SP);
+    return value;
+}
+
+u8 push_stack(CPU *cpu, u8 value){
+    assert(cpu->SP > 0);
+    write_mem(cpu, cpu->SP, value);
+    cpu->SP--;
+    return value;
+}
+
 static void go_to_next_instruction(CPU *cpu){
     cpu->opcode = fetch(cpu);
     cpu->machine_cycle = 0; 
@@ -1119,8 +1133,86 @@ i32 run_cpu(CPU *cpu){
                     return 4;
                 }
 
-                case 0xC0:{
+                case 0xC0:{ // RET NZ
+                    if(cpu->machine_cycle == 1){
+                        if(cpu->flags & FLAG_ZERO) cpu->machine_cycle = 4; // Will be 5 next cycle
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        imm_low = pop_stack(cpu);
+                    }
+                    else if(cpu->machine_cycle == 3){
+                        imm_high = pop_stack(cpu);
+                    }
+                    else if(cpu->machine_cycle == 4){
+                        imm = (imm_high << 8) | (imm_low);
+                        cpu->PC = imm;
+                    }
+                    else if(cpu->machine_cycle == 5){
+                        go_to_next_instruction(cpu);
+                    }
 
+                    return 4;
+                }
+
+                case 0xC8:{ // RET Z
+                    if(cpu->machine_cycle == 1){
+                        if(!(cpu->flags & FLAG_ZERO)) cpu->machine_cycle = 4; // Will be 5 next cycle
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        imm_low = pop_stack(cpu);
+                    }
+                    else if(cpu->machine_cycle == 3){
+                        imm_high = pop_stack(cpu);
+                    }
+                    else if(cpu->machine_cycle == 4){
+                        imm = (imm_high << 8) | (imm_low);
+                        cpu->PC = imm;
+                    }
+                    else if(cpu->machine_cycle == 5){
+                        go_to_next_instruction(cpu);
+                    }
+
+                    return 4;
+                }
+
+                case 0xD0:{ // RET NC
+                    if(cpu->machine_cycle == 1){
+                        if(cpu->flags & FLAG_CARRY) cpu->machine_cycle = 4; // Will be 5 next cycle
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        imm_low = pop_stack(cpu);
+                    }
+                    else if(cpu->machine_cycle == 3){
+                        imm_high = pop_stack(cpu);
+                    }
+                    else if(cpu->machine_cycle == 4){
+                        imm = (imm_high << 8) | (imm_low);
+                        cpu->PC = imm;
+                    }
+                    else if(cpu->machine_cycle == 5){
+                        go_to_next_instruction(cpu);
+                    }
+
+                    return 4;
+                }
+
+                case 0xD8:{ // RET C
+                    if(cpu->machine_cycle == 1){
+                        if(!(cpu->flags & FLAG_CARRY)) cpu->machine_cycle = 4; // Will be 5 next cycle
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        imm_low = pop_stack(cpu);
+                    }
+                    else if(cpu->machine_cycle == 3){
+                        imm_high = pop_stack(cpu);
+                    }
+                    else if(cpu->machine_cycle == 4){
+                        imm = (imm_high << 8) | (imm_low);
+                        cpu->PC = imm;
+                    }
+                    else if(cpu->machine_cycle == 5){
+                        go_to_next_instruction(cpu);
+                    }
 
                     return 4;
                 }
