@@ -866,6 +866,41 @@ i32 run_cpu(CPU *cpu){
 
                     return 4;
                 }
+
+                case 0x20:{ // AND A, r
+                    if(cpu->machine_cycle == 1){
+                        u8 reg  = (cpu->opcode & 0x07);
+                        assert(reg <= 7 && reg >= 0);
+
+                        if(reg != 6){
+                            cpu->A = cpu->A & (*cpu->register_map[reg]);
+                            
+                            cpu->A == 0 ? set_flag(cpu, FLAG_ZERO) : unset_flag(cpu, FLAG_ZERO);
+                            unset_flag(cpu, FLAG_CARRY);
+                            unset_flag(cpu, FLAG_SUB);
+                            set_flag(cpu, FLAG_HALFCARRY);
+                                
+                            go_to_next_instruction(cpu);
+                        }
+                        else if (reg == 6){ // AND A, [HL]
+                            mem_value = read_mem(cpu, cpu->HL);
+                        }
+
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        // AND A, [HL]
+                        cpu->A = cpu->A & mem_value;
+                            
+                        cpu->A == 0 ? set_flag(cpu, FLAG_ZERO) : unset_flag(cpu, FLAG_ZERO);
+                        unset_flag(cpu, FLAG_CARRY);
+                        unset_flag(cpu, FLAG_SUB);
+                        set_flag(cpu, FLAG_HALFCARRY);
+                        
+                        go_to_next_instruction(cpu);
+                    }
+
+                    return 4;
+                }
             }
 
             break;
