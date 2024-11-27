@@ -789,6 +789,33 @@ i32 run_cpu(CPU *cpu){
                     }
                     return 4;
                 }
+
+                case 0x08:{ // ADC A, r
+                    if(cpu->machine_cycle == 1){
+                        u8 reg  = (cpu->opcode & 0x07);
+                        assert(reg <= 7 & reg >= 0);
+
+                        u8 carry = (cpu->flags & FLAG_CARRY) >> 4;
+
+                        if(reg != 6){
+                            cpu->A = sum_and_set_flags(cpu, cpu->A, *cpu->register_map[reg] + carry, true, true);
+                            go_to_next_instruction(cpu);
+                        }
+                        else if (reg == 6){ // ADD A, [HL]
+                            mem_value = read_mem(cpu, cpu->HL);
+                        }
+
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        // ADD A, [HL]
+                        u8 carry = (cpu->flags & FLAG_CARRY) >> 4;
+                        cpu->A = sum_and_set_flags(cpu, cpu->A, mem_value + carry, true, true);
+                        
+                        go_to_next_instruction(cpu);
+                    }
+
+                    return 4;
+                }
             }
 
             break;
