@@ -27,4 +27,4 @@ typedef double f64;
 #define gigabytes(value) (megabytes(value) * 1024)
 #define terabytes(value) (gigabytes(value) * 1024)
 
-#define ArraySize(array) (sizeof(array) / sizeof((array)[0]))
+#define array_size(array) (sizeof(array) / sizeof((array)[0]))

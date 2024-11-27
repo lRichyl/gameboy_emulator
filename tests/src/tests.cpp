@@ -1564,6 +1564,349 @@ void cp_r8(){
 	show_test_result(test_name, result);
 }
 
+void add_imm8(){
+	const char *test_name = "ADD A, imm8";
+	bool result = true;
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[] = {0xC6, 0x03};
+		cpu->A = 0x0F;
+		memcpy(cpu->memory, mem, 2);
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, (cpu->flags & FLAG_HALFCARRY));
+		check_result(&result, cpu->A  == 0x12);
+		check_result(&result, cpu->PC == 0x03);
+	}
+
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[] = {0xC6, 0x02};
+		cpu->A = 0xFF;
+		memcpy(cpu->memory, mem, 2);
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, (cpu->flags & FLAG_HALFCARRY|FLAG_CARRY));
+		check_result(&result, cpu->A  == 0x01);
+		check_result(&result, cpu->PC == 0x03);
+	}
+
+	show_test_result(test_name, result);
+}
+
+void adc_imm8(){
+	const char *test_name = "ADC A, imm8";
+	bool result = true;
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[] = {0xCE, 0x03};
+		memcpy(cpu->memory, mem, 2);
+		cpu->A = 0x0F;
+		cpu->B = 0x03;
+		set_flag(cpu, FLAG_CARRY);
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, (cpu->flags & FLAG_HALFCARRY));
+		check_result(&result, cpu->A  == 0x13);
+		check_result(&result, cpu->PC == 0x03);
+	}
+
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[] = {0xCE, 0xFF};
+		memcpy(cpu->memory, mem, 2);
+		cpu->A = 0xFF;
+		set_flag(cpu, FLAG_CARRY);
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, (cpu->flags & FLAG_HALFCARRY|FLAG_CARRY));
+		check_result(&result, cpu->A  == 0xFF);
+		check_result(&result, cpu->PC == 0x03);
+	}
+
+	show_test_result(test_name, result);
+}
+
+void sub_imm8(){
+	const char *test_name = "SUB A, imm8";
+	bool result = true;
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[] = {0xD6, 0x01};
+		memcpy(cpu->memory, mem, 2);
+		cpu->A = 0x00;
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, (cpu->flags & FLAG_HALFCARRY|FLAG_CARRY|FLAG_SUB));
+		check_result(&result, cpu->A  == 0xFF);
+		check_result(&result, cpu->PC == 0x03);
+	}
+
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[] = {0xD6, 0x01};
+		cpu->A = 0x01;
+		memcpy(cpu->memory, mem, 2);
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, (cpu->flags & FLAG_ZERO|FLAG_SUB));
+		check_result(&result, cpu->A  == 0x00);
+		check_result(&result, cpu->PC == 0x03);
+	}
+
+
+	show_test_result(test_name, result);
+}
+
+void sbc_imm8(){
+	const char *test_name = "SBC A, imm8";
+	bool result = true;
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[] = {0xDE, 0x01};
+		memcpy(cpu->memory, mem, 2);
+		cpu->A = 0x01;
+		set_flag(cpu, FLAG_CARRY);
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, (cpu->flags & FLAG_HALFCARRY|FLAG_CARRY|FLAG_SUB));
+		check_result(&result, cpu->A  == 0xFF);
+		check_result(&result, cpu->PC == 0x03);
+	}
+
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[] = {0xDE, 0x01};
+		memcpy(cpu->memory, mem, 2);
+		cpu->A = 0x02;
+		set_flag(cpu, FLAG_CARRY);
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, (cpu->flags & FLAG_ZERO|FLAG_SUB));
+		check_result(&result, cpu->A  == 0x00);
+		check_result(&result, cpu->PC == 0x03);
+	}
+
+	show_test_result(test_name, result);
+}
+
+void and_imm8(){
+	const char *test_name = "AND A, imm8";
+	bool result = true;
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[] = {0xE6, 0x22};
+		memcpy(cpu->memory, mem, array_size(mem));
+		cpu->A = 0xAA;
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, (cpu->flags & FLAG_HALFCARRY));
+		check_result(&result, cpu->A  == 0x22);
+		check_result(&result, cpu->PC == 0x03);
+	}
+
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[] = {0xE6, 0x55};
+		memcpy(cpu->memory, mem, array_size(mem));
+		cpu->A = 0xAA;
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, (cpu->flags & FLAG_HALFCARRY|FLAG_ZERO));
+		check_result(&result, cpu->A  == 0x00);
+		check_result(&result, cpu->PC == 0x03);
+	}
+
+	show_test_result(test_name, result);
+}
+
+void xor_imm8(){
+	const char *test_name = "XOR A, imm8";
+	bool result = true;
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[] = {0xEE, 0x55};
+		memcpy(cpu->memory, mem, array_size(mem));
+		cpu->A = 0xAA;
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, !(cpu->flags));
+		check_result(&result, cpu->A  == 0xFF);
+		check_result(&result, cpu->PC == 0x03);
+	}
+
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[] = {0xEE, 0x00};
+		memcpy(cpu->memory, mem, array_size(mem));
+		cpu->A = 0x00;
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, (cpu->flags & FLAG_ZERO));
+		check_result(&result, cpu->A  == 0x00);
+		check_result(&result, cpu->PC == 0x03);
+	}
+
+	show_test_result(test_name, result);
+}
+
+void or_imm8(){
+	const char *test_name = "OR A, imm8";
+	bool result = true;
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[] = {0xF6, 0x55};
+		memcpy(cpu->memory, mem, array_size(mem));
+		cpu->A = 0x0A;
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, !(cpu->flags));
+		check_result(&result, cpu->A  == 0x5F);
+		check_result(&result, cpu->PC == 0x03);
+	}
+
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[] = {0xF6, 0x00};
+		memcpy(cpu->memory, mem, array_size(mem));
+		cpu->A = 0x00;
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, (cpu->flags & FLAG_ZERO));
+		check_result(&result, cpu->A  == 0x00);
+		check_result(&result, cpu->PC == 0x03);
+	}
+
+	show_test_result(test_name, result);
+}
+
+void cp_imm8(){
+	const char *test_name = "CP A, imm8";
+	bool result = true;
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[] = {0xFE, 0x01};
+		memcpy(cpu->memory, mem, array_size(mem));
+		cpu->A = 0x00;
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, (cpu->flags & FLAG_HALFCARRY|FLAG_CARRY|FLAG_SUB));
+		check_result(&result, cpu->A  == 0x00);
+		check_result(&result, cpu->PC == 0x03);
+	}
+
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[] = {0xFE, 0x01};
+		memcpy(cpu->memory, mem, array_size(mem));
+		cpu->A = 0x01;
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, (cpu->flags & FLAG_ZERO|FLAG_SUB));
+		check_result(&result, cpu->A  == 0x01);
+		check_result(&result, cpu->PC == 0x03);
+	}
+
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[] = {0xFE, 0x01};
+		memcpy(cpu->memory, mem, array_size(mem));
+		cpu->A = 0xFF;
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, (cpu->flags & FLAG_SUB));
+		check_result(&result, cpu->A  == 0xFF);
+		check_result(&result, cpu->PC == 0x03);
+	}
+
+	show_test_result(test_name, result);
+}
+
 int main(){
 	ld_r16_imm16();
 	ld_memr16_a();
@@ -1596,6 +1939,14 @@ int main(){
 	xor_r8();
 	or_r8();
 	cp_r8();
+	add_imm8();
+	adc_imm8();
+	sub_imm8();
+	sbc_imm8();
+	and_imm8();
+	xor_imm8();
+	or_imm8();
+	cp_imm8();
 
 	return 0;
 }

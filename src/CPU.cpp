@@ -1118,6 +1118,12 @@ i32 run_cpu(CPU *cpu){
 
                     return 4;
                 }
+
+                case 0xC0:{
+
+
+                    return 4;
+                }
             }
 
             break;
