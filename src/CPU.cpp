@@ -1336,6 +1336,31 @@ i32 run_cpu(CPU *cpu){
 
                     return 4;
                 }
+
+                case 0xC3:{ // JP imm16
+                    if(cpu->machine_cycle == 1){
+                        imm_low = fetch(cpu);;
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        imm_high = fetch(cpu);
+                    }
+                    else if(cpu->machine_cycle == 3){
+                        imm = (imm_high << 8) | (imm_low);
+                        cpu->PC = imm;
+                    }
+                    else if(cpu->machine_cycle == 4){
+                        go_to_next_instruction(cpu);
+                    }
+
+                    return 4;
+                }
+
+                case 0xE9:{ // JP HL
+                    cpu->PC = cpu->HL;
+                    go_to_next_instruction(cpu);
+
+                    return 4;
+                }
             }
 
             break;
