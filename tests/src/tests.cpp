@@ -147,8 +147,6 @@ void ld_memr16_a(){
 	show_test_result(test_name, result);
 }
 
-
-
 void ld_a_memr16(){
 	const char *test_name = "LD A, [r16]";
 	bool result = true;

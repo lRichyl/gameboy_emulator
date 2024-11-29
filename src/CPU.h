@@ -53,6 +53,8 @@ struct CPU{
 
     u16 *wide_register_map[NUM_WIDE_REGISTERS];
     u8  *register_map[NUM_REGISTERS];
+
+    bool IME;
 };
 
 enum Flag {

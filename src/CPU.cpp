@@ -4,6 +4,7 @@
 void init_cpu(CPU *cpu){
     cpu->clock_speed = 4194304; // Hz
     cpu->do_first_fetch = true;
+    cpu->IME = false;
 
     cpu->wide_register_map[0] = &cpu->BC;
     cpu->wide_register_map[1] = &cpu->DE;
@@ -1211,6 +1212,43 @@ i32 run_cpu(CPU *cpu){
                         cpu->PC = imm;
                     }
                     else if(cpu->machine_cycle == 5){
+                        go_to_next_instruction(cpu);
+                    }
+
+                    return 4;
+                }
+
+                case 0xC9:{ // RET
+                    if(cpu->machine_cycle == 1){
+                        imm_low = pop_stack(cpu);
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        imm_high = pop_stack(cpu);
+                    }
+                    else if(cpu->machine_cycle == 3){
+                        imm = (imm_high << 8) | (imm_low);
+                        cpu->PC = imm;
+                    }
+                    else if(cpu->machine_cycle == 4){
+                        go_to_next_instruction(cpu);
+                    }
+
+                    return 4;
+                }
+
+                case 0xD9:{ // RET
+                    if(cpu->machine_cycle == 1){
+                        imm_low = pop_stack(cpu);
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        imm_high = pop_stack(cpu);
+                    }
+                    else if(cpu->machine_cycle == 3){
+                        imm = (imm_high << 8) | (imm_low);
+                        cpu->PC = imm;
+                        cpu->IME = true;
+                    }
+                    else if(cpu->machine_cycle == 4){
                         go_to_next_instruction(cpu);
                     }
 
