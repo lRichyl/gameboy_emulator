@@ -107,15 +107,15 @@ static u8 substract_and_set_flags(CPU *cpu, u8 minuend, u8 sustrahend, b32 check
 
 u8 pop_stack(CPU *cpu){
     assert(cpu->SP > 0);
-    cpu->SP++;
     u8 value = read_mem(cpu, cpu->SP);
+    cpu->SP++;
     return value;
 }
 
 u8 push_stack(CPU *cpu, u8 value){
     assert(cpu->SP > 0);
-    write_mem(cpu, cpu->SP, value);
     cpu->SP--;
+    write_mem(cpu, cpu->SP, value);
     return value;
 }
 
@@ -1361,6 +1361,154 @@ i32 run_cpu(CPU *cpu){
 
                     return 4;
                 }
+
+                case 0xC4:{ // CALL NZ, imm16
+                    if(cpu->machine_cycle == 1){
+                        imm_low = fetch(cpu);;
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        imm_high = fetch(cpu);
+                        if(cpu->flags & FLAG_ZERO){
+                            cpu->machine_cycle = 5;
+                        }
+                    }
+                    else if(cpu->machine_cycle == 3){
+                        cpu->SP--;
+                    }
+                    else if(cpu->machine_cycle == 4){
+                        assert(cpu->SP > 0);
+                        write_mem(cpu, cpu->SP, cpu->PCH);
+                        cpu->SP--;
+                    }
+                    else if(cpu->machine_cycle == 5){
+                        write_mem(cpu, cpu->SP, cpu->PCL);
+                        imm = (imm_high << 8) | (imm_low);
+                        cpu->PC = imm;
+                    }
+                    else if(cpu->machine_cycle == 6){
+                        go_to_next_instruction(cpu);
+                    }
+
+                    return 4;
+                }
+
+                case 0xCC:{ // CALL Z, imm16
+                    if(cpu->machine_cycle == 1){
+                        imm_low = fetch(cpu);;
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        imm_high = fetch(cpu);
+                        if(!(cpu->flags & FLAG_ZERO)){
+                            cpu->machine_cycle = 5;
+                        }
+                    }
+                    else if(cpu->machine_cycle == 3){
+                        cpu->SP--;
+                    }
+                    else if(cpu->machine_cycle == 4){
+                        assert(cpu->SP > 0);
+                        write_mem(cpu, cpu->SP, cpu->PCH);
+                        cpu->SP--;
+                    }
+                    else if(cpu->machine_cycle == 5){
+                        write_mem(cpu, cpu->SP, cpu->PCL);
+                        imm = (imm_high << 8) | (imm_low);
+                        cpu->PC = imm;
+                    }
+                    else if(cpu->machine_cycle == 6){
+                        go_to_next_instruction(cpu);
+                    }
+
+                    return 4;
+                }
+
+                case 0xD4:{ // CALL NC, imm16
+                    if(cpu->machine_cycle == 1){
+                        imm_low = fetch(cpu);;
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        imm_high = fetch(cpu);
+                        if(cpu->flags & FLAG_CARRY){
+                            cpu->machine_cycle = 5;
+                        }
+                    }
+                    else if(cpu->machine_cycle == 3){
+                        cpu->SP--;
+                    }
+                    else if(cpu->machine_cycle == 4){
+                        assert(cpu->SP > 0);
+                        write_mem(cpu, cpu->SP, cpu->PCH);
+                        cpu->SP--;
+                    }
+                    else if(cpu->machine_cycle == 5){
+                        write_mem(cpu, cpu->SP, cpu->PCL);
+                        imm = (imm_high << 8) | (imm_low);
+                        cpu->PC = imm;
+                    }
+                    else if(cpu->machine_cycle == 6){
+                        go_to_next_instruction(cpu);
+                    }
+
+                    return 4;
+                }
+
+                case 0xDC:{ // CALL C, imm16
+                    if(cpu->machine_cycle == 1){
+                        imm_low = fetch(cpu);;
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        imm_high = fetch(cpu);
+                        if(!(cpu->flags & FLAG_CARRY)){
+                            cpu->machine_cycle = 5;
+                        }
+                    }
+                    else if(cpu->machine_cycle == 3){
+                        cpu->SP--;
+                    }
+                    else if(cpu->machine_cycle == 4){
+                        assert(cpu->SP > 0);
+                        write_mem(cpu, cpu->SP, cpu->PCH);
+                        cpu->SP--;
+                    }
+                    else if(cpu->machine_cycle == 5){
+                        write_mem(cpu, cpu->SP, cpu->PCL);
+                        imm = (imm_high << 8) | (imm_low);
+                        cpu->PC = imm;
+                    }
+                    else if(cpu->machine_cycle == 6){
+                        go_to_next_instruction(cpu);
+                    }
+
+                    return 4;
+                }
+
+                case 0xCD:{ // CALL imm16
+                    if(cpu->machine_cycle == 1){
+                        imm_low = fetch(cpu);;
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        imm_high = fetch(cpu);
+                    }
+                    else if(cpu->machine_cycle == 3){
+                        cpu->SP--;
+                    }
+                    else if(cpu->machine_cycle == 4){
+                        assert(cpu->SP > 0);
+                        write_mem(cpu, cpu->SP, cpu->PCH);
+                        cpu->SP--;
+                    }
+                    else if(cpu->machine_cycle == 5){
+                        write_mem(cpu, cpu->SP, cpu->PCL);
+                        imm = (imm_high << 8) | (imm_low);
+                        cpu->PC = imm;
+                    }
+                    else if(cpu->machine_cycle == 6){
+                        go_to_next_instruction(cpu);
+                    }
+
+                    return 4;
+                }
+
             }
 
             break;

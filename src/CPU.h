@@ -47,7 +47,14 @@ struct CPU{
     };
 
     u16 SP; // Stack pointer
-    u16 PC; // Program counter
+
+    union{
+        u16 PC; // Program counter
+        struct{
+            u8 PCL;
+            u8 PCH;
+        };
+    };
 
     u8 memory[0x10000];
 
