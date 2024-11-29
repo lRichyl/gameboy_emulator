@@ -1254,6 +1254,88 @@ i32 run_cpu(CPU *cpu){
 
                     return 4;
                 }
+
+                case 0xC2:{ // JP NZ, imm16
+                    if(cpu->machine_cycle == 1){
+                        imm_low = fetch(cpu);;
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        imm_high = fetch(cpu);
+                        if((cpu->flags & FLAG_ZERO)){
+                            cpu->machine_cycle = 3;
+                        }
+                    }
+                    else if(cpu->machine_cycle == 3){
+                        imm = (imm_high << 8) | (imm_low);
+                        cpu->PC = imm;
+                    }
+                    else if(cpu->machine_cycle == 4){
+                        go_to_next_instruction(cpu);
+                    }
+                    return 4;
+                }
+
+                case 0xCA:{ // JP Z, imm16
+                    if(cpu->machine_cycle == 1){
+                        imm_low = fetch(cpu);;
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        imm_high = fetch(cpu);
+                        if(!(cpu->flags & FLAG_ZERO)){
+                            cpu->machine_cycle = 3;
+                        }
+                    }
+                    else if(cpu->machine_cycle == 3){
+                        imm = (imm_high << 8) | (imm_low);
+                        cpu->PC = imm;
+                    }
+                    else if(cpu->machine_cycle == 4){
+                        go_to_next_instruction(cpu);
+                    }
+
+                    return 4;
+                }
+
+                case 0xD2:{ // JP NC, imm16
+                    if(cpu->machine_cycle == 1){
+                        imm_low = fetch(cpu);;
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        imm_high = fetch(cpu);
+                        if((cpu->flags & FLAG_CARRY)){
+                            cpu->machine_cycle = 3;
+                        }
+                    }
+                    else if(cpu->machine_cycle == 3){
+                        imm = (imm_high << 8) | (imm_low);
+                        cpu->PC = imm;
+                    }
+                    else if(cpu->machine_cycle == 4){
+                        go_to_next_instruction(cpu);
+                    }
+                    return 4;
+                }
+
+                case 0xDA:{ // JP C, imm16
+                    if(cpu->machine_cycle == 1){
+                        imm_low = fetch(cpu);;
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        imm_high = fetch(cpu);
+                        if(!(cpu->flags & FLAG_CARRY)){
+                            cpu->machine_cycle = 3;
+                        }
+                    }
+                    else if(cpu->machine_cycle == 3){
+                        imm = (imm_high << 8) | (imm_low);
+                        cpu->PC = imm;
+                    }
+                    else if(cpu->machine_cycle == 4){
+                        go_to_next_instruction(cpu);
+                    }
+
+                    return 4;
+                }
             }
 
             break;
