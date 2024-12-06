@@ -125,13 +125,20 @@ static void go_to_next_instruction(CPU *cpu){
 }
 
 static u8 immr8;
-static u8 imm_low;
-static u8 imm_high;
-static u16 imm;
+
+
+static union{
+    u16 imm;
+    struct{
+        u8 imm_low;
+        u8 imm_high;
+    };
+};
 static u8 dest;
 static u8 src;
 
 static u8 mem_value;
+
 
 i32 run_cpu(CPU *cpu){
     if(cpu->do_first_fetch){
@@ -1613,7 +1620,23 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
                         
+                    return 4;
+                }
 
+                case 0xEA:{ // LDH [imm16], A
+                    if(cpu->machine_cycle == 1){
+                        imm_low = fetch(cpu);
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        imm_high = fetch(cpu);
+                    }
+                    else if(cpu->machine_cycle == 3){
+                        write_mem(cpu, imm, cpu->A);
+                    }
+                    else if(cpu->machine_cycle == 4){
+                        go_to_next_instruction(cpu);
+                    }
+                        
                     return 4;
                 }
             }
