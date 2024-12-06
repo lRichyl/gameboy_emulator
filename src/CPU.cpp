@@ -1589,7 +1589,7 @@ i32 run_cpu(CPU *cpu){
                     return 4;
                 }
 
-                case 0xE2:{ // LD [C], A
+                case 0xE2:{ // LDH [C], A
                     if(cpu->machine_cycle == 1){
                         u16 address = 0xFF00 + cpu->C;
                         write_mem(cpu, address, cpu->A);
@@ -1597,8 +1597,25 @@ i32 run_cpu(CPU *cpu){
                     else if(cpu->machine_cycle == 2){
                         go_to_next_instruction(cpu);
                     }
+
                     return 4;
                 } 
+
+                case 0xE0:{ // LDH [imm8], A
+                    if(cpu->machine_cycle == 1){
+                        immr8 = fetch(cpu);
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        u16 address = 0xFF00 + immr8;
+                        write_mem(cpu, address, cpu->A);
+                    }
+                    else if(cpu->machine_cycle == 3){
+                        go_to_next_instruction(cpu);
+                    }
+                        
+
+                    return 4;
+                }
             }
             
 
