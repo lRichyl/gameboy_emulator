@@ -1742,6 +1742,17 @@ i32 run_cpu(CPU *cpu){
                     }
                     return 4;
                 }
+
+                case 0xF9:{ // LD SP, HL
+                    if(cpu->machine_cycle == 1){
+                        cpu->SP = cpu->HL;
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        go_to_next_instruction(cpu);
+                    }
+
+                    return 4;
+                }
             }
             
 
