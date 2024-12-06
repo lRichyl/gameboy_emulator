@@ -1991,6 +1991,94 @@ void ret_cc(){
 	show_test_result(test_name, result);
 }
 
+void pop(){
+	const char *test_name = "POP r16";
+	bool result = true;
+	{   // POP BC
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[] = {0xC1};
+		memcpy(cpu->memory, mem, array_size(mem));
+
+		cpu->SP = 0xFFFF;
+		push_stack(cpu, 0x20);
+		push_stack(cpu, 0x50);
+
+		while(cpu->PC < 4){
+			run_cpu(cpu);
+		}
+		check_result(&result, cpu->BC == 0x2050);
+		check_result(&result, cpu->PC == 0x04);
+	}
+
+	{   // POP AF
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[] = {0xF1};
+		memcpy(cpu->memory, mem, array_size(mem));
+
+		cpu->SP = 0xFFFF;
+		push_stack(cpu, 0x33);
+		push_stack(cpu, 0xFF);
+
+		while(cpu->PC < 4){
+			run_cpu(cpu);
+		}
+		check_result(&result, cpu->AF == 0x33FF);
+		check_result(&result, cpu->PC == 0x04);
+	}
+
+	show_test_result(test_name, result);
+}
+
+void push(){
+	const char *test_name = "PUSH r16";
+	bool result = true;
+	{   // PUSH DE
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[] = {0xD5};
+		memcpy(cpu->memory, mem, array_size(mem));
+
+		cpu->SP = 0xFFFF;
+		cpu->DE = 0x20AA;
+
+		while(cpu->PC < 4){
+			run_cpu(cpu);
+		}
+		check_result(&result, pop_stack(cpu) == 0xAA);
+		check_result(&result, pop_stack(cpu) == 0x20);
+		check_result(&result, cpu->PC == 0x04);
+	}
+
+	{   // PUSH HL
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[] = {0xE5};
+		memcpy(cpu->memory, mem, array_size(mem));
+
+		cpu->SP = 0xFFFF;
+		cpu->HL = 0x4AB5;
+
+		while(cpu->PC < 4){
+			run_cpu(cpu);
+		}
+		check_result(&result, pop_stack(cpu) == 0xB5);
+		check_result(&result, pop_stack(cpu) == 0x4A);
+		check_result(&result, cpu->PC == 0x04);
+	}
+
+	show_test_result(test_name, result);
+}
+
 int main(){
 	ld_r16_imm16();
 	ld_memr16_a();
@@ -2032,6 +2120,8 @@ int main(){
 	or_imm8();
 	cp_imm8();
 	ret_cc();
+	pop();
+	push();
 
 	return 0;
 }

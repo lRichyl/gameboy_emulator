@@ -1552,13 +1552,37 @@ i32 run_cpu(CPU *cpu){
                         cpu->SP++;
                     }
                     else if(cpu->machine_cycle == 3){
-                        u8 target = (cpu->opcode & 30) >> 4;
+                        u8 target = (cpu->opcode & 0x30) >> 4;
                         *(cpu->wide_register_map[target]) = (imm_high << 8) | imm_low;
                         go_to_next_instruction(cpu);
                     }
 
                     return 4;
                 }
+
+                case 0xC5:
+                case 0xD5:
+                case 0xE5:
+                case 0xF5:{ // PUSH r16
+                    if(cpu->machine_cycle == 1){
+                        cpu->SP--;
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        assert(cpu->SP > 0);
+                        u8 src = (cpu->opcode & 0x30) >> 4;
+                        write_mem(cpu, cpu->SP, *(cpu->register_map[(src * 2)]));
+                        cpu->SP--;
+                    }
+                    else if(cpu->machine_cycle == 3){
+                        u8 src = (cpu->opcode & 0x30) >> 4;
+                        write_mem(cpu, cpu->SP, *(cpu->register_map[(src * 2) + 1]));
+                    }
+                    else if(cpu->machine_cycle == 4){
+                        go_to_next_instruction(cpu);
+                    }
+
+                    return 4;
+                } 
             }
             
 
