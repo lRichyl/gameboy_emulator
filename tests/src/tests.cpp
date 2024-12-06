@@ -2149,6 +2149,32 @@ void ldh_imm16_a(){
 	show_test_result(test_name, result);
 }
 
+void ldh_a_c(){
+	const char *test_name = "LDH A, [C]";
+	bool result = true;
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[] = {0xF2};
+		memcpy(cpu->memory, mem, array_size(mem));
+
+		cpu->A = 0x6;
+		cpu->C = 0x80;
+
+		cpu->memory[0xFF00 + cpu->C] = 0x2A;
+
+		while(cpu->PC < 2){
+			run_cpu(cpu);
+		}
+		check_result(&result, cpu->A == 0x2A);
+		check_result(&result, cpu->PC == 0x02);
+	}
+
+	show_test_result(test_name, result);
+}
+
 int main(){
 	ld_r16_imm16();
 	ld_memr16_a();
@@ -2195,6 +2221,7 @@ int main(){
 	ldh_c_a();
 	ldh_imm8_a();
 	ldh_imm16_a();
+	ldh_a_c();
 
 	return 0;
 }

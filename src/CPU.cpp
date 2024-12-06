@@ -1639,6 +1639,19 @@ i32 run_cpu(CPU *cpu){
                         
                     return 4;
                 }
+
+                case 0xF2:{ // LDH A, [C]
+                    if(cpu->machine_cycle == 1){
+                        u16 address = 0xFF00 + cpu->C;
+                        mem_value = read_mem(cpu, address);
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        cpu->A = mem_value;
+                        go_to_next_instruction(cpu);
+                    }
+
+                    return 4;
+                } 
             }
             
 
