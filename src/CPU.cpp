@@ -1509,7 +1509,36 @@ i32 run_cpu(CPU *cpu){
                     return 4;
                 }
 
+                case 0xC7:
+                case 0xD7:
+                case 0xE7:
+                case 0xF7:
+                case 0xCF:
+                case 0xDF:
+                case 0xEF:
+                case 0xFF:{ // RST
+                    if(cpu->machine_cycle == 1){
+                        cpu->SP--;
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        assert(cpu->SP > 0);
+                        write_mem(cpu, cpu->SP, cpu->PCH);
+                        cpu->SP--;
+                    }
+                    else if(cpu->machine_cycle == 3){
+                        write_mem(cpu, cpu->SP, cpu->PCL);
+                        u8 target = (cpu->opcode & 0x38) >> 3;
+                        u16 address = target * 0x08;
+                        cpu->PC = address;
+                    }
+                    else if(cpu->machine_cycle == 4){
+                        go_to_next_instruction(cpu);
+                    }
+
+                    return 4;
+                }
             }
+            
 
             break;
         }
