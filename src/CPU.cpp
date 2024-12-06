@@ -138,6 +138,7 @@ static u8 dest;
 static u8 src;
 
 static u8 mem_value;
+static bool sign;
 
 
 i32 run_cpu(CPU *cpu){
@@ -636,8 +637,21 @@ i32 run_cpu(CPU *cpu){
                         immr8 = fetch(cpu);    
                     }
                     else if(cpu->machine_cycle == 2){
-                        i8 imm8s = (i8)immr8;
-                        u16 target = cpu->PC - 1 + imm8s;
+                        bool sign = immr8 & 0x80;
+                        immr8  = sum_and_set_flags(cpu, immr8, cpu->PCL, true, true);
+                        i8 adj = 0;
+                        if((cpu->flags & FLAG_CARRY) && !sign){
+                            adj = 1;
+                        }
+                        else if(!(cpu->flags & FLAG_CARRY) && sign){
+                            adj = -1;
+                        }
+
+                        mem_value = cpu->PCH + adj;
+
+
+                        // i8 imm8s = (i8)immr8;
+                        u16 target = (mem_value << 8) | immr8;
                         cpu->PC = target;
 
                     }else if(cpu->machine_cycle == 3){
@@ -1684,6 +1698,33 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
                         
+                    return 4;
+                }
+
+                case 0xE8:{ // ADD SP, e
+                    if(cpu->machine_cycle == 1){
+                        immr8 = fetch(cpu);
+                        sign = immr8 & 0x80;
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        // immr8 = sum_and_set_flags(cpu, cpu->SPL, immr8, true, true);
+                    }
+                    else if(cpu->machine_cycle == 3){
+                        
+                        // i8 adj = 0;
+                        // if((cpu->flags & FLAG_CARRY) && !sign){
+                        //     adj = 1;
+                        // }
+                        // else if(!(cpu->flags & FLAG_CARRY) && sign){
+                        //     adj = -1;
+                        // }
+                        // mem_value = cpu->SPH + adj + ((cpu->flags & FLAG_CARRY) >> 4);   
+                    }
+                    else if(cpu->machine_cycle == 4){
+                        i8 imm8s = (i8)immr8;
+                        cpu->SP += imm8s;
+                        go_to_next_instruction(cpu);
+                    }
                     return 4;
                 }
             }

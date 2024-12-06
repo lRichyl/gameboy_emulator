@@ -961,7 +961,7 @@ void jr_imm8(){
 			run_cpu(cpu);
 		}
 		
-		check_result(&result, cpu->PC == 0x0B);
+		check_result(&result, cpu->PC == 0x0C);
 	}
 
 	{   
@@ -975,7 +975,7 @@ void jr_imm8(){
 			run_cpu(cpu);
 		}
 		
-		check_result(&result, cpu->PC == 0x00);
+		check_result(&result, cpu->PC == 0x01);
 	}
 
 	show_test_result(test_name, result);
@@ -2223,6 +2223,46 @@ void ldh_a_imm16(){
 	show_test_result(test_name, result);
 }
 
+void add_sp_imm8(){
+	const char *test_name = "ADD SP, e8";
+	bool result = true;
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[2] = {0xE8, 0xFF};
+		memcpy(cpu->memory, mem, 2);
+
+		cpu->SP = 0xFFFF;
+		while(cpu->PC < 4){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, cpu->SP == 0xFFFE);
+		check_result(&result, cpu->PC == 0x04);
+	}
+
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[2] = {0xE8, 0x0A};
+		memcpy(cpu->memory, mem, 2);
+
+		cpu->SP = 0xFFFF;
+		while(cpu->PC < 4){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, cpu->SP == 0x0009);
+		check_result(&result, cpu->PC == 0x04);
+	}
+
+	show_test_result(test_name, result);
+}
+
 int main(){
 	ld_r16_imm16();
 	ld_memr16_a();
@@ -2272,6 +2312,7 @@ int main(){
 	ldh_a_c();
 	ldh_a_imm8();
 	ldh_a_imm16();
+	add_sp_imm8();
 
 	return 0;
 }

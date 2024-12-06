@@ -45,8 +45,13 @@ struct CPU{
             u8 A; // Accumulator
         };
     };
-
-    u16 SP; // Stack pointer
+    union{
+        u16 SP; // Stack pointer
+        struct{
+            u8 SPL;
+            u8 SPH;
+        };
+    };
 
     union{
         u16 PC; // Program counter
