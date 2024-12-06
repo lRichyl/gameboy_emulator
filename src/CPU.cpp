@@ -5,6 +5,7 @@ void init_cpu(CPU *cpu){
     cpu->clock_speed = 4194304; // Hz
     cpu->do_first_fetch = true;
     cpu->IME = false;
+    cpu->scheduled_ei = false;
 
     cpu->wide_register_map[0] = &cpu->BC;
     cpu->wide_register_map[1] = &cpu->DE;
@@ -120,6 +121,10 @@ u8 push_stack(CPU *cpu, u8 value){
 }
 
 static void go_to_next_instruction(CPU *cpu){
+    if(cpu->opcode != 0xFB && cpu->scheduled_ei){
+        cpu->IME = true;
+        cpu->scheduled_ei = false;
+    }
     cpu->opcode = fetch(cpu);
     cpu->machine_cycle = 0; 
 }
@@ -1753,6 +1758,20 @@ i32 run_cpu(CPU *cpu){
 
                     return 4;
                 }
+
+                case 0xF3:{ // DI
+                    cpu->IME = false;
+                    cpu->scheduled_ei = false;
+                    go_to_next_instruction(cpu);
+                    return 4;
+                }
+
+                case 0xFB:{ // EI
+                    cpu->scheduled_ei = true;
+                    go_to_next_instruction(cpu);
+                    return 4;
+                }
+
             }
             
 

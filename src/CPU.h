@@ -67,6 +67,7 @@ struct CPU{
     u8  *register_map[NUM_REGISTERS];
 
     bool IME;
+    bool scheduled_ei;
 };
 
 enum Flag {
