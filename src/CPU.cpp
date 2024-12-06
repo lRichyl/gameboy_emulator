@@ -1582,6 +1582,22 @@ i32 run_cpu(CPU *cpu){
                     }
 
                     return 4;
+                }
+
+                case 0x0B:{
+                    // TODO: Implement extended instruction set.
+                    return 4;
+                }
+
+                case 0xE2:{ // LD [C], A
+                    if(cpu->machine_cycle == 1){
+                        u16 address = 0xFF00 + cpu->C;
+                        write_mem(cpu, address, cpu->A);
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        go_to_next_instruction(cpu);
+                    }
+                    return 4;
                 } 
             }
             
