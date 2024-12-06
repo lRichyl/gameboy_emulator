@@ -1668,6 +1668,24 @@ i32 run_cpu(CPU *cpu){
                         
                     return 4;
                 }
+
+                case 0xFA:{ // LDH A, [imm16]
+                    if(cpu->machine_cycle == 1){
+                        imm_low = fetch(cpu);
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        imm_high = fetch(cpu);
+                    }
+                    else if(cpu->machine_cycle == 3){
+                        mem_value = read_mem(cpu, imm);
+                    }
+                    else if(cpu->machine_cycle == 4){
+                        cpu->A = mem_value;
+                        go_to_next_instruction(cpu);
+                    }
+                        
+                    return 4;
+                }
             }
             
 
