@@ -2263,6 +2263,46 @@ void add_sp_imm8(){
 	show_test_result(test_name, result);
 }
 
+void ld_hl_spe(){
+	const char *test_name = "LD HL, SP+e";
+	bool result = true;
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[2] = {0xF8, 0x20};
+		memcpy(cpu->memory, mem, 2);
+
+		cpu->SP = 0xFF00;
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, cpu->HL == 0xFF20);
+		check_result(&result, cpu->PC == 0x03);
+	}
+	
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[2] = {0xF8, 0xFF};
+		memcpy(cpu->memory, mem, 2);
+
+		cpu->SP = 0xFFFF;
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, cpu->HL == 0xFFFE);
+		check_result(&result, cpu->PC == 0x03);
+	}
+
+	show_test_result(test_name, result);
+}
+
 int main(){
 	ld_r16_imm16();
 	ld_memr16_a();
@@ -2313,6 +2353,7 @@ int main(){
 	ldh_a_imm8();
 	ldh_a_imm16();
 	add_sp_imm8();
+	ld_hl_spe();
 
 	return 0;
 }

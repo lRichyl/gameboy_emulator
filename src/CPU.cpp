@@ -1704,10 +1704,10 @@ i32 run_cpu(CPU *cpu){
                 case 0xE8:{ // ADD SP, e
                     if(cpu->machine_cycle == 1){
                         immr8 = fetch(cpu);
-                        sign = immr8 & 0x80;
+                        // sign = immr8 & 0x80;
                     }
                     else if(cpu->machine_cycle == 2){
-                        // immr8 = sum_and_set_flags(cpu, cpu->SPL, immr8, true, true);
+                        sum_and_set_flags(cpu, cpu->SPL, immr8, true, true);
                     }
                     else if(cpu->machine_cycle == 3){
                         
@@ -1723,6 +1723,21 @@ i32 run_cpu(CPU *cpu){
                     else if(cpu->machine_cycle == 4){
                         i8 imm8s = (i8)immr8;
                         cpu->SP += imm8s;
+                        go_to_next_instruction(cpu);
+                    }
+                    return 4;
+                }
+
+                case 0xF8:{ // LD HL, SP+e
+                    if(cpu->machine_cycle == 1){
+                        immr8 = fetch(cpu);
+                    }
+                    else if(cpu->machine_cycle == 2){
+                        sum_and_set_flags(cpu, cpu->SPL, immr8 + cpu->SPL, true, true);
+                    }
+                    else if(cpu->machine_cycle == 3){
+                        i8 imm8s = (i8)immr8;
+                        cpu->HL = cpu->SP + imm8s;
                         go_to_next_instruction(cpu);
                     }
                     return 4;
