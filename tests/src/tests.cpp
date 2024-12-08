@@ -2675,6 +2675,67 @@ void cb_sra_r(){
 	show_test_result(test_name, result);
 }
 
+void cb_swap_r(){
+	const char *test_name = "SWAP R";
+	bool result = true;
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[2] = {0xCB, 0x31};
+		memcpy(cpu->memory, mem, 2);
+
+		cpu->C = 0x84;
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, cpu->C == 0x48);
+		check_result(&result, !(cpu->flags & (FLAG_ZERO|FLAG_CARRY|FLAG_SUB|FLAG_HALFCARRY)));
+		check_result(&result, cpu->PC == 0x03);
+	}
+	
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[2] = {0xCB, 0x37};
+		memcpy(cpu->memory, mem, 2);
+
+		cpu->A = 0x00;
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, cpu->A == 0x00);
+		check_result(&result, (cpu->flags & (FLAG_ZERO)));
+		check_result(&result, cpu->PC == 0x03);
+	}
+
+	{   
+		Gameboy gmb = {};
+		init_gameboy(&gmb);
+
+		CPU *cpu = &gmb.cpu;
+		u8 mem[2] = {0xCB, 0x36};
+		memcpy(cpu->memory, mem, 2);
+
+		cpu->HL = 0xFF05;
+		cpu->memory[cpu->HL] = 0x53;
+		while(cpu->PC < 3){
+			run_cpu(cpu);
+		}
+		
+		check_result(&result, cpu->memory[cpu->HL] == 0x35);
+		check_result(&result, !(cpu->flags & (FLAG_ZERO|FLAG_CARRY|FLAG_SUB|FLAG_HALFCARRY)));
+		check_result(&result, cpu->PC == 0x03);
+	}
+
+	show_test_result(test_name, result);
+}
+
 int main(){
 	ld_r16_imm16();
 	ld_memr16_a();
@@ -2733,6 +2794,7 @@ int main(){
 	cb_rr_r();
 	cb_sla_r();
 	cb_sra_r();
+	cb_swap_r();
 
 	return 0;
 }

@@ -2083,6 +2083,55 @@ i32 run_cpu(CPU *cpu){
 
                         return 4;
                     }
+
+                    case 0x30:{ // SWAP r
+                        if(cpu->machine_cycle == 1){
+                            u8 reg = cpu->opcode & 0x07;
+                            if(reg != 6){
+                                u8 upper_nibble = *(cpu->register_map[reg]) & 0xF0;
+                                u8 lower_nibble = *(cpu->register_map[reg]) & 0x0F;
+
+                                *(cpu->register_map[reg]) = (upper_nibble >> 4) | (lower_nibble << 4);
+
+                                if(*(cpu->register_map[reg]) == 0)
+                                    set_flag(cpu, FLAG_ZERO);
+                                else
+                                    unset_flag(cpu, FLAG_ZERO); 
+
+                                unset_flag(cpu, FLAG_CARRY);
+                                unset_flag(cpu, FLAG_SUB);
+                                unset_flag(cpu, FLAG_HALFCARRY);
+
+                                go_to_next_instruction(cpu);
+                            }
+                            else{
+                                mem_value = read_mem(cpu, cpu->HL);
+                            }
+                        
+                        }
+                        else if(cpu->machine_cycle == 2){
+                            u8 upper_nibble = mem_value & 0xF0;
+                            u8 lower_nibble = mem_value & 0x0F;
+
+                            mem_value = (upper_nibble >> 4) | (lower_nibble << 4);
+
+                            if(mem_value == 0)
+                                set_flag(cpu, FLAG_ZERO);
+                            else
+                                unset_flag(cpu, FLAG_ZERO); 
+
+                            unset_flag(cpu, FLAG_CARRY);
+                            unset_flag(cpu, FLAG_SUB);
+                            unset_flag(cpu, FLAG_HALFCARRY);
+
+                            write_mem(cpu, cpu->HL, mem_value);
+                        }
+                        else if(cpu->machine_cycle == 3){
+                            go_to_next_instruction(cpu);
+                        }
+
+                        return 4;
+                    }
                 }
                 
             }
