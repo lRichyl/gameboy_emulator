@@ -2014,6 +2014,43 @@ i32 run_cpu(CPU *cpu){
 
                         return 4;
                     }
+
+                    case 0x28:{ // SRA r
+                        if(cpu->machine_cycle == 1){
+                            u8 reg = cpu->opcode & 0x07;
+                            if(reg != 6){
+                                u8 previous_bit_0 = *(cpu->register_map[reg]) & 0x01;
+                                previous_bit_0 ? set_flag(cpu, FLAG_CARRY) : unset_flag(cpu, FLAG_CARRY);
+
+                                u8 bit_7 = *(cpu->register_map[reg]) & 0x80;
+                                *(cpu->register_map[reg]) >>= 1;
+                                *(cpu->register_map[reg]) |= bit_7;
+                                *(cpu->register_map[reg]) &= ~(0x40);
+
+                                go_to_next_instruction(cpu);
+                            }
+                            else{
+                                mem_value = read_mem(cpu, cpu->HL);
+                            }
+                        
+                        }
+                        else if(cpu->machine_cycle == 2){
+                            u8 previous_bit_0 = mem_value & 0x01;
+                            previous_bit_0 ? set_flag(cpu, FLAG_CARRY) : unset_flag(cpu, FLAG_CARRY);
+                            
+                            u8 bit_7 = mem_value & 0x80;
+                            mem_value >>= 1;
+                            mem_value |= bit_7;
+                            mem_value &= ~(0x40);
+
+                            write_mem(cpu, cpu->HL, mem_value);
+                        }
+                        else if(cpu->machine_cycle == 3){
+                            go_to_next_instruction(cpu);
+                        }
+
+                        return 4;
+                    }
                 }
                 
             }
