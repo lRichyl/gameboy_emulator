@@ -2208,6 +2208,34 @@ i32 run_cpu(CPU *cpu){
                     set_flag(cpu, FLAG_HALFCARRY);
 
                     write_mem(cpu, cpu->HL, mem_value);
+                    go_to_next_instruction(cpu);
+                }
+
+                return 4;
+            }
+
+            case 0x80:{ // RES instructions
+                if(cpu->machine_cycle == 1){
+                    u8 reg = cpu->opcode & 0x07;
+                    u8 bit = (cpu->opcode & 0x38) >> 3;
+                    if(reg != 6){
+                        (*(cpu->register_map[reg])) &= ~(1 << bit);
+
+                        go_to_next_instruction(cpu);
+                    }
+                    else{
+                        mem_value = read_mem(cpu, cpu->HL);
+                    }
+                    
+                }
+                else if(cpu->machine_cycle == 2){
+                    u8 bit = (cpu->opcode & 0x38) >> 3;
+                    mem_value &= ~(1 << bit);
+
+                    unset_flag(cpu, FLAG_SUB);
+                    set_flag(cpu, FLAG_HALFCARRY);
+
+                    write_mem(cpu, cpu->HL, mem_value);
                 }
                 else if(cpu->machine_cycle == 3){
                     go_to_next_instruction(cpu);
