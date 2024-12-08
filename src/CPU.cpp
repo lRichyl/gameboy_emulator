@@ -6,6 +6,7 @@ void init_cpu(CPU *cpu){
     cpu->do_first_fetch = true;
     cpu->IME = false;
     cpu->scheduled_ei = false;
+    cpu->is_extended = false;
 
     cpu->wide_register_map[0] = &cpu->BC;
     cpu->wide_register_map[1] = &cpu->DE;
@@ -154,7 +155,8 @@ i32 run_cpu(CPU *cpu){
         return 4;
     }
     cpu->machine_cycle++;
-    switch(cpu->opcode & 0xC0){
+    if(!cpu->is_extended){
+        switch(cpu->opcode & 0xC0){
         case 0x00:{
             switch(cpu->opcode){
                 case 0x00:{  // NOP
@@ -1610,8 +1612,9 @@ i32 run_cpu(CPU *cpu){
                     return 4;
                 }
 
-                case 0x0B:{
-                    // TODO: Implement extended instruction set.
+                case 0xCB:{
+                    cpu->is_extended = true;
+                    go_to_next_instruction(cpu);
                     return 4;
                 }
 
@@ -1783,5 +1786,64 @@ i32 run_cpu(CPU *cpu){
             return 4;
         }
     }
-        
+    }
+    else{ // Opcodes prefixed with 0xCB
+        switch(cpu->opcode & 0xC0){
+            case 0x00:{
+                switch(cpu->opcode & 0x38){
+                    case 0x00:{ // RLC r
+                        if(cpu->machine_cycle == 1){
+                            u8 reg = cpu->opcode & 0x07;
+                            if(reg != 6){
+                                u8 previous_bit_7 = (*(cpu->register_map[reg]) & 0x80) >> 7;
+                                previous_bit_7 ? set_flag(cpu, FLAG_CARRY) : unset_flag(cpu, FLAG_CARRY);
+                                *(cpu->register_map[reg]) <<= 1;
+                                *(cpu->register_map[reg]) = (*(cpu->register_map[reg]) & (~(0x01))) | previous_bit_7;
+
+                                if(*(cpu->register_map[reg]) == 0)
+                                    set_flag(cpu, FLAG_ZERO);
+                                else
+                                    unset_flag(cpu, FLAG_ZERO);    
+                                unset_flag(cpu, FLAG_SUB);
+                                unset_flag(cpu, FLAG_HALFCARRY);
+
+                                go_to_next_instruction(cpu);
+                            }
+                            else{
+                                mem_value = read_mem(cpu, cpu->HL);
+                            }
+                        
+                        }
+                        else if(cpu->machine_cycle == 2){
+                            u8 previous_bit_7 = (mem_value & 0x80) >> 7;
+                            previous_bit_7 ? set_flag(cpu, FLAG_CARRY) : unset_flag(cpu, FLAG_CARRY);
+                            mem_value <<= 1;
+                            mem_value = (mem_value & (~(0x01))) | previous_bit_7;
+
+                            if(mem_value == 0)
+                                set_flag(cpu, FLAG_ZERO);
+                            else
+                                unset_flag(cpu, FLAG_ZERO);    
+
+                            unset_flag(cpu, FLAG_SUB);
+                            unset_flag(cpu, FLAG_HALFCARRY); 
+
+                            write_mem(cpu, cpu->HL, mem_value);
+                        }
+                        else if(cpu->machine_cycle == 3){
+                            go_to_next_instruction(cpu);
+                        }
+
+                        return 4;
+                    }
+                }
+                
+            }
+
+            default:{
+                printf("Prefixed Opcode %X not implemented\n", cpu->opcode);
+                return 4;
+            } 
+        }
+    }
 }

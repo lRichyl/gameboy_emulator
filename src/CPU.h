@@ -68,6 +68,7 @@ struct CPU{
 
     bool IME;
     bool scheduled_ei;
+    bool is_extended;
 };
 
 enum Flag {
