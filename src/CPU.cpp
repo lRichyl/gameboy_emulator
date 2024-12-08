@@ -1846,7 +1846,7 @@ i32 run_cpu(CPU *cpu){
                                 *(cpu->register_map[reg]) >>= 1;
                                 *(cpu->register_map[reg]) = (*(cpu->register_map[reg]) & (~(0x80))) | (previous_bit_0 << 7);
 
-                                if(mem_value == 0)
+                                if(*(cpu->register_map[reg]) == 0)
                                     set_flag(cpu, FLAG_ZERO);
                                 else
                                     unset_flag(cpu, FLAG_ZERO); 
@@ -1866,6 +1866,57 @@ i32 run_cpu(CPU *cpu){
                             previous_bit_0 ? set_flag(cpu, FLAG_CARRY) : unset_flag(cpu, FLAG_CARRY);
                             mem_value >>= 1;
                             mem_value = (mem_value & (~(0x80))) | (previous_bit_0 << 7);
+
+                            if(mem_value == 0)
+                                set_flag(cpu, FLAG_ZERO);
+                            else
+                                unset_flag(cpu, FLAG_ZERO); 
+
+                            unset_flag(cpu, FLAG_SUB);
+                            unset_flag(cpu, FLAG_HALFCARRY);
+
+                            write_mem(cpu, cpu->HL, mem_value);
+                        }
+                        else if(cpu->machine_cycle == 3){
+                            go_to_next_instruction(cpu);
+                        }
+
+                        return 4;
+                    }
+
+                    case 0x10:{ // RL r
+                        if(cpu->machine_cycle == 1){
+                            u8 reg = cpu->opcode & 0x07;
+                            if(reg != 6){
+                                u8 previous_bit_7 = (*(cpu->register_map[reg]) & 0x80) >> 7;
+                                
+                                *(cpu->register_map[reg]) <<= 1;
+                                *(cpu->register_map[reg]) = (*(cpu->register_map[reg]) & (~(0x01))) | ((cpu->flags & FLAG_CARRY) >> 4);
+
+                                previous_bit_7 ? set_flag(cpu, FLAG_CARRY) : unset_flag(cpu, FLAG_CARRY);
+
+                                if(*(cpu->register_map[reg]) == 0)
+                                    set_flag(cpu, FLAG_ZERO);
+                                else
+                                    unset_flag(cpu, FLAG_ZERO); 
+
+                                unset_flag(cpu, FLAG_SUB);
+                                unset_flag(cpu, FLAG_HALFCARRY);
+
+                                go_to_next_instruction(cpu);
+                            }
+                            else{
+                                mem_value = read_mem(cpu, cpu->HL);
+                            }
+                        
+                        }
+                        else if(cpu->machine_cycle == 2){
+                            u8 previous_bit_7 = (mem_value & 0x80) >> 7;
+                                
+                            mem_value <<= 1;
+                            mem_value = (mem_value & (~(0x01))) | ((cpu->flags & FLAG_CARRY) >> 4);
+
+                            previous_bit_7 ? set_flag(cpu, FLAG_CARRY) : unset_flag(cpu, FLAG_CARRY);
 
                             if(mem_value == 0)
                                 set_flag(cpu, FLAG_ZERO);
