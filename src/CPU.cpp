@@ -1994,6 +1994,14 @@ i32 run_cpu(CPU *cpu){
                                 previous_bit_7 ? set_flag(cpu, FLAG_CARRY) : unset_flag(cpu, FLAG_CARRY);
                                 *(cpu->register_map[reg]) <<= 1;
 
+                                if(*(cpu->register_map[reg]) == 0)
+                                    set_flag(cpu, FLAG_ZERO);
+                                else
+                                    unset_flag(cpu, FLAG_ZERO); 
+
+                                unset_flag(cpu, FLAG_SUB);
+                                unset_flag(cpu, FLAG_HALFCARRY);
+
                                 go_to_next_instruction(cpu);
                             }
                             else{
@@ -2005,6 +2013,14 @@ i32 run_cpu(CPU *cpu){
                             u8 previous_bit_7 = (mem_value & 0x80) >> 7;
                             previous_bit_7 ? set_flag(cpu, FLAG_CARRY) : unset_flag(cpu, FLAG_CARRY);
                             mem_value <<= 1;
+
+                            if(mem_value == 0)
+                                set_flag(cpu, FLAG_ZERO);
+                            else
+                                unset_flag(cpu, FLAG_ZERO); 
+
+                            unset_flag(cpu, FLAG_SUB);
+                            unset_flag(cpu, FLAG_HALFCARRY);
 
                             write_mem(cpu, cpu->HL, mem_value);
                         }
@@ -2027,6 +2043,14 @@ i32 run_cpu(CPU *cpu){
                                 *(cpu->register_map[reg]) |= bit_7;
                                 *(cpu->register_map[reg]) &= ~(0x40);
 
+                                if(*(cpu->register_map[reg]) == 0)
+                                    set_flag(cpu, FLAG_ZERO);
+                                else
+                                    unset_flag(cpu, FLAG_ZERO); 
+
+                                unset_flag(cpu, FLAG_SUB);
+                                unset_flag(cpu, FLAG_HALFCARRY);
+
                                 go_to_next_instruction(cpu);
                             }
                             else{
@@ -2042,6 +2066,14 @@ i32 run_cpu(CPU *cpu){
                             mem_value >>= 1;
                             mem_value |= bit_7;
                             mem_value &= ~(0x40);
+
+                            if(mem_value == 0)
+                                set_flag(cpu, FLAG_ZERO);
+                            else
+                                unset_flag(cpu, FLAG_ZERO); 
+
+                            unset_flag(cpu, FLAG_SUB);
+                            unset_flag(cpu, FLAG_HALFCARRY);
 
                             write_mem(cpu, cpu->HL, mem_value);
                         }
