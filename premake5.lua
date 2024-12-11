@@ -59,6 +59,7 @@ project "Tests"
    language "C++"
 
    files {"src/**.cpp", "src/**.c", "src/**.h", "tests/src/**.cpp"}
+   removefiles { "src/main.cpp" }
    includedirs {"src"}
 
    filter "toolset:msc*"

@@ -85,7 +85,7 @@ void ld_memr16_a(){
 		while(cpu->PC < 2){
 			run_cpu(cpu);
 		}
-		check_result(&result, cpu->memory[cpu->BC] == 0x01);
+		check_result(&result, read_memory(cpu->memory, cpu->BC) == 0x01);
 		check_result(&result, cpu->PC == 0x02);
 	}
 
@@ -102,7 +102,7 @@ void ld_memr16_a(){
 		while(cpu->PC < 2){
 			run_cpu(cpu);
 		}
-		check_result(&result, cpu->memory[cpu->DE] == 0xA0);
+		check_result(&result, read_memory(cpu->memory, cpu->DE) == 0xA0);
 		check_result(&result, cpu->PC == 0x02);
 	}
 
@@ -120,7 +120,7 @@ void ld_memr16_a(){
 		while(cpu->PC < 2){
 			run_cpu(cpu);
 		}
-		check_result(&result, cpu->memory[previous_HL] == 0xBB);
+		check_result(&result, read_memory(cpu->memory, previous_HL) == 0xBB);
 		check_result(&result, cpu->HL == previous_HL + 1);
 		check_result(&result, cpu->PC == 0x02);
 	}
@@ -139,7 +139,7 @@ void ld_memr16_a(){
 		while(cpu->PC < 2){
 			run_cpu(cpu);
 		}
-		check_result(&result, cpu->memory[previous_HL] == 0xDC);
+		check_result(&result, read_memory(cpu->memory, previous_HL) == 0xDC);
 		check_result(&result, cpu->HL == previous_HL - 1);
 		check_result(&result, cpu->PC == 0x02);
 	}
@@ -159,7 +159,7 @@ void ld_a_memr16(){
 		memcpy(cpu->memory, mem, 1);
 
 		cpu->BC = 0x07FF;
-		cpu->memory[cpu->BC] = 0x01;
+		write_memory(cpu->memory,cpu->BC, 0x01);
 		while(cpu->PC < 2){
 			run_cpu(cpu);
 		}
@@ -176,7 +176,7 @@ void ld_a_memr16(){
 		memcpy(cpu->memory, mem, 1);
 
 		cpu->DE = 0xFFFF;
-		cpu->memory[cpu->DE] = 0xA0;
+		write_memory(cpu->memory, cpu->DE, 0xA0);
 		while(cpu->PC < 2){
 			run_cpu(cpu);
 		}
@@ -193,7 +193,7 @@ void ld_a_memr16(){
 		memcpy(cpu->memory, mem, 1);
 
 		cpu->HL = 0x0AAA;
-		cpu->memory[cpu->HL] = 0xBB;
+		write_memory(cpu->memory, cpu->HL, 0xBB);
 		u16 previous_HL = cpu->HL;
 		while(cpu->PC < 2){
 			run_cpu(cpu);
@@ -212,7 +212,7 @@ void ld_a_memr16(){
 		memcpy(cpu->memory, mem, 1);
 
 		cpu->HL = 0x0AAA;
-		cpu->memory[cpu->HL] = 0xDC;
+		write_memory(cpu->memory, cpu->HL, 0xDC);
 		u16 previous_HL = cpu->HL;
 		while(cpu->PC < 2){
 			run_cpu(cpu);
@@ -240,8 +240,8 @@ void ld_a16_sp(){
 		while(cpu->PC < 6){
 			run_cpu(cpu);
 		}
-		check_result(&result, cpu->memory[0xFF7F] == 0x20);
-		check_result(&result, cpu->memory[0xFF80] == 0x10);
+		check_result(&result, read_memory(cpu->memory, 0xFF7F) == 0x20);
+		check_result(&result, read_memory(cpu->memory, 0xFF80) == 0x10);
 		check_result(&result, cpu->PC == 0x06);
 	}
 	show_test_result(test_name, result);
@@ -456,12 +456,12 @@ void inc_memhl(){
 		memcpy(cpu->memory, mem, 1);
 
 		cpu->HL = 0xAABB;
-		cpu->memory[cpu->HL] = 0xFF;
-		u8 previous_mem = cpu->memory[cpu->HL];
+		write_memory(cpu->memory, cpu->HL, 0xFF);
+		u8 previous_mem = read_memory(cpu->memory, cpu->HL);
 		while(cpu->PC < 3){
 			run_cpu(cpu);
 		}
-		check_result(&result, cpu->memory[cpu->HL] == u8(previous_mem + 1));
+		check_result(&result, read_memory(cpu->memory, cpu->HL) == u8(previous_mem + 1));
 		check_result(&result, (cpu->flags) & (FLAG_HALFCARRY|FLAG_ZERO));
 		check_result(&result, cpu->PC == 0x03);
 	}
@@ -558,12 +558,12 @@ void dec_memhl(){
 		memcpy(cpu->memory, mem, 1);
 
 		cpu->HL = 0xAABB;
-		cpu->memory[cpu->HL] = 0x00;
-		u8 previous_mem = cpu->memory[cpu->HL];
+		write_memory(cpu->memory, cpu->HL, 0x00);
+		u8 previous_mem = read_memory(cpu->memory, cpu->HL);
 		while(cpu->PC < 3){
 			run_cpu(cpu);
 		}
-		check_result(&result, cpu->memory[cpu->HL] == u8(previous_mem - 1));
+		check_result(&result, read_memory(cpu->memory, cpu->HL) == u8(previous_mem - 1));
 		check_result(&result, (cpu->flags) & (FLAG_HALFCARRY|FLAG_SUB));
 		check_result(&result, cpu->PC == 0x03);
 	}
@@ -647,7 +647,7 @@ void ld_memhl_imm8(){
 		while(cpu->PC < 5){
 			run_cpu(cpu);
 		}
-		check_result(&result, cpu->memory[cpu->HL]  == 0x68);
+		check_result(&result, read_memory(cpu->memory, cpu->HL)  == 0x68);
 		check_result(&result, cpu->PC == 0x05);
 	}
 
@@ -1042,13 +1042,13 @@ void ld_r8_r8(){
 		CPU *cpu = &gmb.cpu;
 		u8 mem[] = {0x74};
 		cpu->HL = 0x2000;
-		cpu->memory[cpu->HL] = 0x00;
+		write_memory(cpu->memory, cpu->HL, 0x00);
 		memcpy(cpu->memory, mem, 1);
 		while(cpu->PC < 3){
 			run_cpu(cpu);
 		}
 		
-		check_result(&result, cpu->memory[cpu->HL] == 0x20);
+		check_result(&result, read_memory(cpu->memory, cpu->HL) == 0x20);
 		check_result(&result, cpu->PC == 0x03);
 	}
 
@@ -1059,7 +1059,7 @@ void ld_r8_r8(){
 		CPU *cpu = &gmb.cpu;
 		u8 mem[] = {0x7E};
 		cpu->HL = 0x2000;
-		cpu->memory[cpu->HL] = 0x25;
+		write_memory(cpu->memory, cpu->HL, 0x25);
 		cpu->A = 0x00;
 		memcpy(cpu->memory, mem, 1);
 		while(cpu->PC < 3){
@@ -1120,7 +1120,7 @@ void add_r8(){
 		memcpy(cpu->memory, mem, 1);
 		cpu->A = 0xFF;
 		cpu->HL = 0xAAAA;
-		cpu->memory[cpu->HL] = 0x01;
+		write_memory(cpu->memory, cpu->HL, 0x01);
 		while(cpu->PC < 3){
 			run_cpu(cpu);
 		}
@@ -1182,7 +1182,7 @@ void adc_r8(){
 		memcpy(cpu->memory, mem, 1);
 		cpu->A = 0xFF;
 		cpu->HL = 0xAAAA;
-		cpu->memory[cpu->HL] = 0x01;
+		write_memory(cpu->memory, cpu->HL, 0x01);
 		set_flag(cpu, FLAG_CARRY);
 		while(cpu->PC < 3){
 			run_cpu(cpu);
@@ -1244,7 +1244,7 @@ void sub_r8(){
 		memcpy(cpu->memory, mem, 1);
 		cpu->A = 0xFF;
 		cpu->HL = 0xAAAA;
-		cpu->memory[cpu->HL] = 0x01;
+		write_memory(cpu->memory, cpu->HL, 0x01);
 		while(cpu->PC < 3){
 			run_cpu(cpu);
 		}
@@ -1307,7 +1307,7 @@ void sbc_r8(){
 		memcpy(cpu->memory, mem, 1);
 		cpu->A = 0xFF;
 		cpu->HL = 0xAAAA;
-		cpu->memory[cpu->HL] = 0x01;
+		write_memory(cpu->memory, cpu->HL, 0x01);
 		set_flag(cpu, FLAG_CARRY);
 		while(cpu->PC < 3){
 			run_cpu(cpu);
@@ -1368,7 +1368,7 @@ void and_r8(){
 		memcpy(cpu->memory, mem, 1);
 		cpu->A = 0xAA;
 		cpu->HL = 0xABAB;
-		cpu->memory[cpu->HL] = 0x55;
+		write_memory(cpu->memory, cpu->HL, 0x55);
 		while(cpu->PC < 3){
 			run_cpu(cpu);
 		}
@@ -1428,7 +1428,7 @@ void xor_r8(){
 		memcpy(cpu->memory, mem, 1);
 		cpu->A = 0x00;
 		cpu->HL = 0xABAB;
-		cpu->memory[cpu->HL] = 0x00;
+		write_memory(cpu->memory, cpu->HL, 0x00);
 		while(cpu->PC < 3){
 			run_cpu(cpu);
 		}
@@ -1488,7 +1488,7 @@ void or_r8(){
 		memcpy(cpu->memory, mem, 1);
 		cpu->A = 0x00;
 		cpu->HL = 0xABAB;
-		cpu->memory[cpu->HL] = 0x00;
+		write_memory(cpu->memory, cpu->HL, 0x00);
 		while(cpu->PC < 3){
 			run_cpu(cpu);
 		}
@@ -1549,7 +1549,7 @@ void cp_r8(){
 		memcpy(cpu->memory, mem, 1);
 		cpu->A = 0xFF;
 		cpu->HL = 0xAAAA;
-		cpu->memory[cpu->HL] = 0x01;
+		write_memory(cpu->memory, cpu->HL, 0x01);
 		while(cpu->PC < 3){
 			run_cpu(cpu);
 		}
@@ -2096,7 +2096,7 @@ void ldh_c_a(){
 		while(cpu->PC < 2){
 			run_cpu(cpu);
 		}
-		check_result(&result, cpu->memory[0xFF00 + cpu->C] == 0x06);
+		check_result(&result, read_memory(cpu->memory, 0xFF00 + cpu->C) == 0x06);
 		check_result(&result, cpu->PC == 0x02);
 	}
 
@@ -2119,7 +2119,7 @@ void ldh_imm8_a(){
 		while(cpu->PC < 3){
 			run_cpu(cpu);
 		}
-		check_result(&result, cpu->memory[0xFF00 + 0x50] == 0xAA);
+		check_result(&result, read_memory(cpu->memory, 0xFF00 + 0x50) == 0xAA);
 		check_result(&result, cpu->PC == 0x03);
 	}
 
@@ -2142,7 +2142,7 @@ void ldh_imm16_a(){
 		while(cpu->PC < 4){
 			run_cpu(cpu);
 		}
-		check_result(&result, cpu->memory[0xFF80] == 0xEF);
+		check_result(&result, read_memory(cpu->memory, 0xFF80) == 0xEF);
 		check_result(&result, cpu->PC == 0x04);
 	}
 
@@ -2163,7 +2163,7 @@ void ldh_a_c(){
 		cpu->A = 0x6;
 		cpu->C = 0x80;
 
-		cpu->memory[0xFF00 + cpu->C] = 0x2A;
+		write_memory(cpu->memory, 0xFF00 + cpu->C, 0x2A);
 
 		while(cpu->PC < 2){
 			run_cpu(cpu);
@@ -2187,7 +2187,7 @@ void ldh_a_imm8(){
 		memcpy(cpu->memory, mem, array_size(mem));
 
 		cpu->A = 0xAA;
-		cpu->memory[0xFF00 + 0x50] = 0x56;
+		write_memory(cpu->memory, 0xFF00 + 0x50, 0x56);
 
 		while(cpu->PC < 3){
 			run_cpu(cpu);
@@ -2211,7 +2211,7 @@ void ldh_a_imm16(){
 		memcpy(cpu->memory, mem, array_size(mem));
 
 		cpu->A = 0xEF;
-		cpu->memory[0xFF80] = 0x66;
+		write_memory(cpu->memory, 0xFF80, 0x66);
 
 		while(cpu->PC < 4){
 			run_cpu(cpu);
@@ -2351,12 +2351,12 @@ void cb_rlc_r(){
 		memcpy(cpu->memory, mem, 2);
 
 		cpu->HL = 0xFF05;
-		cpu->memory[cpu->HL] = 0x02;
+		write_memory(cpu->memory, cpu->HL, 0x02);
 		while(cpu->PC < 3){
 			run_cpu(cpu);
 		}
 		
-		check_result(&result, cpu->memory[cpu->HL] == 0x04);
+		check_result(&result, read_memory(cpu->memory, cpu->HL) == 0x04);
 		check_result(&result, !(cpu->flags & FLAG_ZERO));
 		check_result(&result, cpu->PC == 0x03);
 	}
@@ -2412,12 +2412,12 @@ void cb_rrc_r(){
 		memcpy(cpu->memory, mem, 2);
 
 		cpu->HL = 0xFF05;
-		cpu->memory[cpu->HL] = 0x02;
+		write_memory(cpu->memory, cpu->HL, 0x02);
 		while(cpu->PC < 3){
 			run_cpu(cpu);
 		}
 		
-		check_result(&result, cpu->memory[cpu->HL] == 0x01);
+		check_result(&result, read_memory(cpu->memory, cpu->HL) == 0x01);
 		check_result(&result, !(cpu->flags & FLAG_ZERO));
 		check_result(&result, cpu->PC == 0x03);
 	}
@@ -2476,12 +2476,12 @@ void cb_rl_r(){
 
 		set_flag(cpu , FLAG_CARRY);
 		cpu->HL = 0xFF05;
-		cpu->memory[cpu->HL] = 0x02;
+		write_memory(cpu->memory, cpu->HL, 0x02);
 		while(cpu->PC < 3){
 			run_cpu(cpu);
 		}
 		
-		check_result(&result, cpu->memory[cpu->HL] == 0x05);
+		check_result(&result, read_memory(cpu->memory, cpu->HL) == 0x05);
 		check_result(&result, !(cpu->flags & FLAG_ZERO));
 		check_result(&result, cpu->PC == 0x03);
 	}
@@ -2540,12 +2540,12 @@ void cb_rr_r(){
 
 		set_flag(cpu, FLAG_CARRY);
 		cpu->HL = 0xFF05;
-		cpu->memory[cpu->HL] = 0x02;
+		write_memory(cpu->memory, cpu->HL, 0x02);
 		while(cpu->PC < 3){
 			run_cpu(cpu);
 		}
 		
-		check_result(&result, cpu->memory[cpu->HL] == 0x81);
+		check_result(&result, read_memory(cpu->memory, cpu->HL) == 0x81);
 		check_result(&result, !(cpu->flags & (FLAG_ZERO|FLAG_CARRY)));
 		check_result(&result, cpu->PC == 0x03);
 	}
@@ -2601,12 +2601,12 @@ void cb_sla_r(){
 		memcpy(cpu->memory, mem, 2);
 
 		cpu->HL = 0xFF05;
-		cpu->memory[cpu->HL] = 0x82;
+		write_memory(cpu->memory, cpu->HL, 0x82);
 		while(cpu->PC < 3){
 			run_cpu(cpu);
 		}
 		
-		check_result(&result, cpu->memory[cpu->HL] == 0x04);
+		check_result(&result, read_memory(cpu->memory, cpu->HL) == 0x04);
 		check_result(&result, (cpu->flags & (FLAG_ZERO|FLAG_CARRY)));
 		check_result(&result, cpu->PC == 0x03);
 	}
@@ -2662,12 +2662,12 @@ void cb_sra_r(){
 		memcpy(cpu->memory, mem, 2);
 
 		cpu->HL = 0xFF05;
-		cpu->memory[cpu->HL] = 0x83;
+		write_memory(cpu->memory, cpu->HL, 0x83);
 		while(cpu->PC < 3){
 			run_cpu(cpu);
 		}
 		
-		check_result(&result, cpu->memory[cpu->HL] == 0x81);
+		check_result(&result, read_memory(cpu->memory, cpu->HL) == 0x81);
 		check_result(&result, (cpu->flags & (FLAG_CARRY)));
 		check_result(&result, cpu->PC == 0x03);
 	}
@@ -2723,12 +2723,12 @@ void cb_swap_r(){
 		memcpy(cpu->memory, mem, 2);
 
 		cpu->HL = 0xFF05;
-		cpu->memory[cpu->HL] = 0x53;
+		write_memory(cpu->memory, cpu->HL, 0x53);
 		while(cpu->PC < 3){
 			run_cpu(cpu);
 		}
 		
-		check_result(&result, cpu->memory[cpu->HL] == 0x35);
+		check_result(&result, read_memory(cpu->memory, cpu->HL) == 0x35);
 		check_result(&result, !(cpu->flags & (FLAG_ZERO|FLAG_CARRY|FLAG_SUB|FLAG_HALFCARRY)));
 		check_result(&result, cpu->PC == 0x03);
 	}
@@ -2784,12 +2784,12 @@ void cb_srl_r(){
 		memcpy(cpu->memory, mem, 2);
 
 		cpu->HL = 0xFF05;
-		cpu->memory[cpu->HL] = 0x83;
+		write_memory(cpu->memory, cpu->HL, 0x83);
 		while(cpu->PC < 3){
 			run_cpu(cpu);
 		}
 		
-		check_result(&result, cpu->memory[cpu->HL] == 0x41);
+		check_result(&result, read_memory(cpu->memory, cpu->HL) == 0x41);
 		check_result(&result, (cpu->flags & (FLAG_CARRY)));
 		check_result(&result, cpu->PC == 0x03);
 	}
@@ -2843,7 +2843,7 @@ void cb_bit_r(){
 		memcpy(cpu->memory, mem, 2);
 
 		cpu->HL = 0xFF05;
-		cpu->memory[cpu->HL] = 0xDF;
+		write_memory(cpu->memory, cpu->HL, 0xDF);
 		while(cpu->PC < 3){
 			run_cpu(cpu);
 		}
@@ -2903,12 +2903,12 @@ void cb_res_r(){
 		memcpy(cpu->memory, mem, 2);
 
 		cpu->HL = 0xFF05;
-		cpu->memory[cpu->HL] = 0xFF;
+		write_memory(cpu->memory, cpu->HL, 0xFF);
 		while(cpu->PC < 3){
 			run_cpu(cpu);
 		}
 		
-		check_result(&result, cpu->memory[cpu->HL] == 0x7F);
+		check_result(&result, read_memory(cpu->memory, cpu->HL) == 0x7F);
 		check_result(&result, !(cpu->flags & (FLAG_ZERO)));
 		check_result(&result, cpu->PC == 0x03);
 	}
@@ -2964,12 +2964,12 @@ void cb_set_r(){
 		memcpy(cpu->memory, mem, 2);
 
 		cpu->HL = 0xFF05;
-		cpu->memory[cpu->HL] = 0xAB;
+		write_memory(cpu->memory, cpu->HL, 0xAB);
 		while(cpu->PC < 3){
 			run_cpu(cpu);
 		}
 		
-		check_result(&result, cpu->memory[cpu->HL] == 0xAF);
+		check_result(&result, read_memory(cpu->memory, cpu->HL) == 0xAF);
 		check_result(&result, !(cpu->flags & (FLAG_ZERO)));
 		check_result(&result, cpu->PC == 0x03);
 	}

@@ -1,13 +1,15 @@
 #pragma once
 #include "common.h"
 #include "CPU.h"
+#include "ppu.h"
 
 const i32 WINDOW_WIDTH  = 160;
 const i32 WINDOW_HEIGHT = 144;
 
 struct Gameboy{
     CPU cpu;
-    // PPU ppu;
+    Memory memory;
+    PPU ppu;
     i32 cycle_count;
 };
 
