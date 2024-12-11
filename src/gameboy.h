@@ -13,5 +13,5 @@ struct Gameboy{
     i32 cycle_count;
 };
 
-void init_gameboy(Gameboy *gmb);
+void init_gameboy(Gameboy *gmb, const char *rom_path);
 void run_gameboy(Gameboy *gmb);

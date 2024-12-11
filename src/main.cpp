@@ -6,7 +6,17 @@
 
 #include "SDL3/SDL.h"
 
-int main(){
+int main(int argc, const char **argv){
+    if(argc < 1){
+        printf("No ROM path provided\n");
+        return -1;
+    }
+
+    // if(argc > 1){
+    //     printf("Too many arguments\n");
+    //     return -1;
+    // }
+
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_AUDIO) == 0) {
         printf("SDL2 Initialization failed: %s", SDL_GetError());
         return 0;
@@ -33,7 +43,7 @@ int main(){
     QueryPerformanceCounter(&last_counter);
 
 	Gameboy gmb = {};
-	init_gameboy(&gmb);
+	init_gameboy(&gmb, argv[1]); // First argument is the rom path.
 
 	b32 is_running = true;
     while (is_running) { // Main loop
@@ -47,7 +57,7 @@ int main(){
         }
       //  SDL_RenderClear(renderer);
 
-        // RunSpaceInvaders(&space_invaders, &is_running, last_counter, perf_count_frequency, input);
+        run_gameboy(&gmb);
 
         SDL_RenderPresent(renderer);
 
