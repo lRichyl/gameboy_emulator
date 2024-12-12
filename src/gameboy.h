@@ -1,4 +1,5 @@
 #pragma once
+#include <windows.h>
 #include "common.h"
 #include "CPU.h"
 #include "ppu.h"
@@ -11,7 +12,8 @@ struct Gameboy{
     Memory memory;
     PPU ppu;
     i32 cycle_count;
+    float frame_time;
 };
 
-void init_gameboy(Gameboy *gmb, const char *rom_path);
-void run_gameboy(Gameboy *gmb);
+void init_gameboy(Gameboy *gmb, SDL_Renderer *renderer, const char *rom_path);
+void run_gameboy(Gameboy *gmb, LARGE_INTEGER starting_time, i64 perf_count_frequency);

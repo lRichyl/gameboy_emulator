@@ -43,7 +43,7 @@ int main(int argc, const char **argv){
     QueryPerformanceCounter(&last_counter);
 
 	Gameboy gmb = {};
-	init_gameboy(&gmb, argv[1]); // First argument is the rom path.
+	init_gameboy(&gmb, renderer, argv[1]); // First argument is the rom path.
 
 	b32 is_running = true;
     while (is_running) { // Main loop
@@ -57,7 +57,7 @@ int main(int argc, const char **argv){
         }
       //  SDL_RenderClear(renderer);
 
-        run_gameboy(&gmb);
+        run_gameboy(&gmb, last_counter, perf_count_frequency);
 
         SDL_RenderPresent(renderer);
 
