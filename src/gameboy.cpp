@@ -29,6 +29,10 @@ void run_gameboy(Gameboy *gmb, LARGE_INTEGER starting_time, i64 perf_count_frequ
     CPU *cpu = &gmb->cpu;
     PPU *ppu = &gmb->ppu;
     while(!ppu->frame_ready){
+        // Handling interrupts
+        if(cpu->fetched_next_instruction){
+            handle_interrupts(cpu);
+        }
         if(!cpu->handling_interrupt && !cpu->halt){
             cpu->cycles_delta += run_cpu(cpu);
         }
@@ -63,8 +67,7 @@ void run_gameboy(Gameboy *gmb, LARGE_INTEGER starting_time, i64 perf_count_frequ
         //printf("LX: \t%X\n", ppu->pixel_count);
         //printf("PPU cycles: \t%d, Tile x %d\n", ppu->cycles, ppu->tile_x);
 
-        // Handle interrupts
-        handle_interrupts(cpu);
+        
 
     }
 
@@ -84,6 +87,6 @@ void run_gameboy(Gameboy *gmb, LARGE_INTEGER starting_time, i64 perf_count_frequ
     
     
     ppu->frame_ready = false;
-    cpu->cycles_delta -= cpu->machine_cycles_per_clock;
+    cpu->cycles_delta -= cpu->machine_cycles_per_frame;
     
 }

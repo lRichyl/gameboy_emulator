@@ -26,7 +26,7 @@ struct CPU{
     bool do_first_fetch;
     i32 machine_cycle;
     float clock_speed;
-    u32 machine_cycles_per_clock;
+    u32 machine_cycles_per_frame;
     float frame_time;
     u32 cycles_delta;
     float period;
@@ -93,6 +93,7 @@ struct CPU{
     bool is_extended;
     bool handling_interrupt;
     bool halt;
+    bool fetched_next_instruction;
     Interrupt interrupt;
 };
 
@@ -100,6 +101,7 @@ struct CPU{
 void init_cpu(CPU *cpu, Memory *memory);
 i32 run_cpu(CPU *cpu);
 u8 fetch(CPU *cpu);
+void go_to_next_instruction(CPU *cpu);
 
 void set_flag(CPU *cpu, Flag flag);
 void unset_flag(CPU *cpu, Flag flag);

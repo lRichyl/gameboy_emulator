@@ -83,11 +83,20 @@ static void push_to_screen(PPU *ppu){
 
     u32 offset = 3;
     Pixel pixel = array_pop(&ppu->bg_fifo);
+
+    Color tint = ppu->colors[pixel.color];
+    // if((read_lcdc(ppu) & LCDC_BG_WIN_ENABLE)) {
+    //     tint = {255, 0, 0};
+    // }else{
+    //     tint = {0, 0, 255};
+    // }
+
+
     if(!ppu->skip_fifo){
         ppu->pixel_count++;
-        ppu->buffer[ppu->current_pos] = ppu->colors[pixel.color].r;
-        ppu->buffer[ppu->current_pos + 1] = ppu->colors[pixel.color].g;
-        ppu->buffer[ppu->current_pos + 2] = ppu->colors[pixel.color].b;
+        ppu->buffer[ppu->current_pos] = tint.r;
+        ppu->buffer[ppu->current_pos + 1] = tint.g;
+        ppu->buffer[ppu->current_pos + 2] = tint.b;
         ppu->current_pos += offset;
     }
     if(ppu->bg_fifo.size == 0) ppu->skip_fifo = false;
@@ -120,21 +129,26 @@ void unset_LYC_LY(PPU *ppu){
 }
 
 void ppu_tick(PPU *ppu, CPU *cpu){
-    if(get_LY(ppu) == get_LYC(ppu)){
-        set_LYC_LY(ppu);
-        if(read_memory(ppu->memory, 0xFF41) & LCDSTAT_LYC_INT){
-            set_interrupt(ppu->memory, INT_LCD);
-        }
-    }
-    else{
-        unset_LYC_LY(ppu);
-    }
-
-    if(get_LY(ppu) == 0) unset_LYC_LY(ppu);
 
     if(read_lcdc(ppu) & LCDC_LCD_PPU_ENABLE){
+        if(get_LY(ppu) == get_LYC(ppu)){
+            set_LYC_LY(ppu);
+            if(ppu->cycles == 0x04){
+                if(get_LY(ppu) == get_LYC(ppu)){
+                    if(read_memory(ppu->memory, 0xFF41) & LCDSTAT_LYC_INT){
+                        set_interrupt(ppu->memory, INT_LCD);
+                    }
+                }
+            }
+        }
+        else{
+            unset_LYC_LY(ppu);
+        }
+        if(get_LY(ppu) == 0) unset_LYC_LY(ppu);
         switch(ppu->mode){
             case MODE_OAM_SCAN:{
+                
+
                 set_stat_ppu_mode(ppu, 2);
                 if(read_memory(ppu->memory, 0xFF41) & LCDSTAT_MODE_2){
                     set_interrupt(ppu->memory, INT_LCD);
@@ -191,10 +205,10 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                             u16 address;
                             if(offset > 127){
                                 offset -= 128;
-                                address = 0x8800 + (ppu->tile_index * 16) + offset; 
+                                address = 0x8800 + ((i8)ppu->tile_index * 16) + offset; 
                             }
                             else{
-                                address = 0x9000 + (ppu->tile_index * 16) + offset;
+                                address = 0x9000 + ((i8)ppu->tile_index * 16) + offset;
                             }
                             ppu->tile_low = read_memory(ppu->memory, address, true);
                         }
@@ -216,10 +230,10 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                             u16 address;
                             if(offset > 127){
                                 offset -= 128;
-                                address = 0x8800 + (ppu->tile_index * 16) + offset; 
+                                address = 0x8800 + ((i8)ppu->tile_index * 16) + offset; 
                             }
                             else{
-                                address = 0x9000 + (ppu->tile_index * 16) + offset;
+                                address = 0x9000 + ((i8)ppu->tile_index * 16) + offset;
                             }
                             ppu->tile_high = read_memory(ppu->memory, address + 1, true);
                         }
@@ -290,7 +304,7 @@ void ppu_tick(PPU *ppu, CPU *cpu){
 
                 ppu->pixel_count++;
                 ppu->cycles += 2;
-                if(ppu->cycles == 454){
+                if(ppu->cycles == 456){
                     if(get_LY(ppu) < 143){
                         ppu->mode = MODE_OAM_SCAN;
                         ppu->pixel_count = 0;
@@ -298,6 +312,7 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                     }
                     else if(get_LY(ppu) == 143){
                         ppu->mode = MODE_VBLANK;
+                        set_interrupt(ppu->memory, INT_VBLANK);                   
                         
                     }
                     increase_LY(ppu);
@@ -308,22 +323,22 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                 break;
             }
             case MODE_VBLANK:{
-                set_interrupt(ppu->memory, INT_VBLANK);                   
+                static u32 vblank_cycles = 0;
                 set_stat_ppu_mode(ppu, 1);
-                if(read_memory(ppu->memory, 0xFF41) & LCDSTAT_MODE_1){
+                if((read_memory(ppu->memory, 0xFF41) & LCDSTAT_MODE_1)){
                     set_interrupt(ppu->memory, INT_LCD);
                 }
 
-                static u32 vblank_cycles = 0;
                 ppu->cycles += 2;
                 vblank_cycles += 2;
-                if(ppu->cycles == 454){
+                if(ppu->cycles == 456){
                     if(get_LY(ppu) == 153){
                         ppu->mode = MODE_OAM_SCAN;
                         set_LY(ppu, 0);
                         ppu->current_pos = 0;
                         ppu_render(ppu);
                         ppu->frame_ready = true;
+                        vblank_cycles = 0;
                     }
                     else{
                         increase_LY(ppu);
@@ -344,9 +359,12 @@ void ppu_tick(PPU *ppu, CPU *cpu){
         ppu->memory->is_oam_locked  = false;
         ppu->memory->is_vram_locked = false;
         ppu->mode = MODE_OAM_SCAN;
-        set_stat_ppu_mode(ppu, 2);
+        // set_stat_ppu_mode(ppu, 2);
         ppu->tile_x = 0;
         ppu->current_pos = 0;
+
+        ppu->frame_ready = false;
+        memset(ppu->buffer, 255, BUFFER_SIZE);
         
         ppu->cycles = 0;
         set_LY(ppu, 0);

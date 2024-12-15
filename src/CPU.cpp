@@ -7,7 +7,7 @@ void init_cpu(CPU *cpu, Memory *memory){
     cpu->clock_speed = 4194304; // Hz
     cpu->frame_time = 1000.f/59.7f;
     cpu->period = 1000.f/(cpu->clock_speed);
-    cpu->machine_cycles_per_clock = (u32)(cpu->frame_time / cpu->period);
+    cpu->machine_cycles_per_frame = (u32)(cpu->frame_time / cpu->period);
     cpu->cycles_delta = 0;
 
     cpu->memory->data[0xFF40] = 0x91;
@@ -24,6 +24,7 @@ void init_cpu(CPU *cpu, Memory *memory){
     cpu->scheduled_ei = false;
     cpu->is_extended = false;
     cpu->handling_interrupt = false;
+    cpu->fetched_next_instruction = false;
 
     cpu->PC = 0x0100; // Temporary
     cpu->internal_counter = 0xABCC;
@@ -122,12 +123,12 @@ static u8 substract_and_set_flags(CPU *cpu, u8 minuend, u8 sustrahend, b32 check
         unset_flag(cpu, FLAG_HALFCARRY);
 
     if(check_carry){
-        if(sustrahend > minuend){
+        //if(sustrahend > minuend){
             if(minuend < sustrahend) 
                 set_flag(cpu, FLAG_CARRY);
             else
                 unset_flag(cpu, FLAG_CARRY);
-        }
+        //}
     }
 
     return result;
@@ -175,12 +176,12 @@ static void go_to_next_instruction(CPU *cpu){
         cpu->IME = true;
         cpu->scheduled_ei = false;
     }
-    //assert(cpu->PC != 0x48);
+    assert(cpu->PC != 0x38);
 
 
     cpu->opcode = fetch(cpu);
     cpu->machine_cycle = 0; 
-
+    cpu->fetched_next_instruction = true;
     
 }
 
@@ -202,6 +203,7 @@ static bool sign;
 
 
 i32 run_cpu(CPU *cpu){
+    if(cpu->fetched_next_instruction) cpu->fetched_next_instruction = false;
     if(cpu->do_first_fetch){
         cpu->machine_cycle = 0;
         cpu->opcode = fetch(cpu);
