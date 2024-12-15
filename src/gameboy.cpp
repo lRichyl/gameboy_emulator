@@ -8,20 +8,67 @@ void init_gameboy(Gameboy *gmb, SDL_Renderer *renderer, const char *rom_path){
     init_ppu(&gmb->ppu, &gmb->memory, renderer);
 }
 
+void increment_div(Memory *memory){
+    u8 div = read_memory(memory, 0xFF04);
+    div++;
+    write_memory(memory, 0xFF04, div);
+}
+
+void increment_tima(Memory *memory){
+    u8 tima = read_memory(memory, 0xFF05);
+    u8 previous_tima = tima;
+    write_memory(memory, 0xFF05, tima);
+    tima++;
+    if(tima == 0x00 && previous_tima == 0xFF){
+        set_interrupt(memory, INT_TIMER);
+        tima = read_memory(memory, 0xFF06);
+    }
+}
+
 void run_gameboy(Gameboy *gmb, LARGE_INTEGER starting_time, i64 perf_count_frequency){
     CPU *cpu = &gmb->cpu;
     PPU *ppu = &gmb->ppu;
-    run_cpu(cpu);
-    
-    ppu_tick(ppu);
-    ppu_tick(ppu);
+    while(!ppu->frame_ready){
+        if(!cpu->handling_interrupt && !cpu->halt){
+            cpu->cycles_delta += run_cpu(cpu);
+        }
+        
+        write_memory(cpu->memory, 0xFF04, (cpu->internal_counter & 0xFF00) >> 8);
+        cpu->internal_counter += 4;
+        // if(cpu->cycles_delta % 256 == 0){
+        //     increment_div(cpu->memory);
+        // }
 
+        u8 TAC = read_memory(cpu->memory, 0xFF07);
+        if(TAC & 0x04){
+            u8 clock = TAC & 0x03;
+            u32 every = 0;
+            switch (clock){
+                case 0x00:{every = 256; break;}
+                case 0x01:{every = 4; break;}
+                case 0x02:{every = 16; break;}
+                case 0x03:{every = 64; break;}
+            }
 
-    // Handle interrupts
+            if(cpu->cycles_delta % (every * 4) == 0){
+                increment_tima(cpu->memory);
+            }
+            
+        }
+        //printf("Cycles %d \n", cpu->cycles_delta);
+       
+        ppu_tick(ppu, cpu);
+        ppu_tick(ppu, cpu);
+
+        //printf("LX: \t%X\n", ppu->pixel_count);
+        //printf("PPU cycles: \t%d, Tile x %d\n", ppu->cycles, ppu->tile_x);
+
+        // Handle interrupts
+        handle_interrupts(cpu);
+
+    }
 
     // Handle emulator timing
-
-
     while(1){// Busy wait.
         LARGE_INTEGER end_counter;
         QueryPerformanceCounter(&end_counter);
@@ -34,5 +81,9 @@ void run_gameboy(Gameboy *gmb, LARGE_INTEGER starting_time, i64 perf_count_frequ
             break;  
         } 
     }
-    ppu_render(ppu);
+    
+    
+    ppu->frame_ready = false;
+    cpu->cycles_delta -= cpu->machine_cycles_per_clock;
+    
 }

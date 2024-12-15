@@ -53,14 +53,10 @@ void array_add(Array<T> *array, T data) {
 template<typename T>
 T array_pop(Array<T> *array){
 	assert(array);
-	if(array->size > 0){
-		T value = array->data[array->size - 1];
-		array->size--;
-		return value;
-	}else if(array->size == 0){
-		T value = array->data[0];
-		return value;
-	}
+	array->size--;
+	assert(array->size >= 0);
+	T value = array->data[array->size];
+	return value;
 }
 
 template<typename T>

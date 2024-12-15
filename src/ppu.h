@@ -15,6 +15,7 @@ enum TileFetchState{
     TILE_FETCH_TILE_LOW,
     TILE_FETCH_TILE_HIGH,
     TILE_FETCH_PUSH_FIFO,
+    TILE_FETCH_DEFAULT
 };
 
 enum SpriteFetchState{
@@ -64,10 +65,16 @@ struct Color{
     u8 b;
 };
 
+#define BUFFER_SIZE 160 * 3 * 144
+
 struct PPU{
     SDL_Texture *framebuffer;
     SDL_Renderer *renderer;
-    u32 current_pos;
+    i32 current_pos;
+    u8 buffer[BUFFER_SIZE];
+
+    u8 *pixels;
+    i32 pitch;
 
     PPUMode mode;
     TileFetchState tile_fetch_state;
@@ -86,12 +93,15 @@ struct PPU{
     u8 tile_high;
     u8 tile_index;
     u8 tile_x;
+    u16 pixel_count;
     bool do_dummy_fetch;
+    bool skip_fifo;
+    bool frame_ready;
 
     Array<Pixel> bg_fifo;
     Array<Pixel> sprite_fifo;
 };
-
+struct CPU;
 void init_ppu(PPU *ppu, Memory *memory, SDL_Renderer *renderer);
-void ppu_tick(PPU *ppu);
+void ppu_tick(PPU *ppu, CPU *cpu);
 void ppu_render(PPU *ppu);

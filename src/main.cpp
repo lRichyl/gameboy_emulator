@@ -55,7 +55,7 @@ int main(int argc, const char **argv){
                 is_running = false;
             }
         }
-      //  SDL_RenderClear(renderer);
+        // SDL_RenderClear(renderer);
 
         run_gameboy(&gmb, last_counter, perf_count_frequency);
 

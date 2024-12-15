@@ -44,6 +44,9 @@ void write_memory(Memory *memory, u16 address, u8 value, bool from_gpu){
         else if(address >= 0x0000 && address <= 0x7FFF){ // ROM
             return;
         }
+        else if(address == 0xFF04){
+            memory->data[address] = 0x00;
+        }
     }
     memory->data[address] = value;
 }

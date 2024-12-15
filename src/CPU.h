@@ -6,11 +6,30 @@
 const i32 NUM_REGISTERS = 8;
 const i32 NUM_WIDE_REGISTERS = 4;
 
+enum Flag {
+    FLAG_CARRY     = 0x10,
+    FLAG_HALFCARRY = 0x20,
+    FLAG_SUB       = 0x40,
+    FLAG_ZERO      = 0x80
+};
+
+enum Interrupt{
+    INT_VBLANK = 0x01,
+    INT_LCD    = 0x02,
+    INT_TIMER  = 0x04,
+    INT_SERIAL = 0x08,
+    INT_JOYPAD = 0x10,
+};
+
 struct CPU{
     u8 opcode;
     bool do_first_fetch;
     i32 machine_cycle;
     float clock_speed;
+    u32 machine_cycles_per_clock;
+    float frame_time;
+    u32 cycles_delta;
+    float period;
 
     union{
         u8 instruction;
@@ -62,6 +81,8 @@ struct CPU{
         };
     };
 
+    u16 internal_counter;
+
     Memory *memory;
 
     u16 *wide_register_map[NUM_WIDE_REGISTERS];
@@ -70,14 +91,11 @@ struct CPU{
     bool IME;
     bool scheduled_ei;
     bool is_extended;
+    bool handling_interrupt;
+    bool halt;
+    Interrupt interrupt;
 };
 
-enum Flag {
-    FLAG_CARRY     = 0x10,
-    FLAG_HALFCARRY = 0x20,
-    FLAG_SUB       = 0x40,
-    FLAG_ZERO      = 0x80
-};
 
 void init_cpu(CPU *cpu, Memory *memory);
 i32 run_cpu(CPU *cpu);
@@ -88,3 +106,9 @@ void unset_flag(CPU *cpu, Flag flag);
 u8 pop_stack(CPU *cpu);
 u8 push_stack(CPU *cpu, u8 value);
 u8 sum_and_set_flags(CPU *cpu, u8 summand_left, u8 summand_right, b32 check_carry, bool check_zero);
+
+void handle_interrupts(CPU *cpu);
+void set_interrupt(Memory *memory, Interrupt interrupt);
+void unset_interrupt(Memory *memory, Interrupt interrupt);
+void enable_interrupt(Memory *memory, Interrupt interrupt);
+void disable_interrupt(Memory *memory, Interrupt interrupt);
