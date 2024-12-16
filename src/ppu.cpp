@@ -301,7 +301,7 @@ void ppu_tick(PPU *ppu, CPU *cpu){
 
 
                 ppu->cycles += 2;
-                if(ppu->tile_x == 21){ 
+                if(ppu->pixel_count == 160){ 
                     array_clear(&ppu->bg_fifo);
                     ppu->mode = MODE_HBLANK;
                     ppu->tile_fetch_state = TILE_FETCH_TILE_INDEX;
@@ -309,6 +309,7 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                     ppu->memory->is_vram_locked = false;
                     ppu->memory->is_oam_locked  = false;
                     ppu->tile_x = 0;
+                    ppu->pixel_count = 0;
                         
                     array_clear(&ppu->sprites); // Clear the list of sprites for the current scanline.
                     
@@ -322,13 +323,10 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                     set_interrupt(cpu, INT_LCD);
                 }
 
-                ppu->pixel_count++;
                 ppu->cycles += 2;
                 if(ppu->cycles == 456){
                     if(get_LY(ppu) < 143){
                         ppu->mode = MODE_OAM_SCAN;
-                        ppu->pixel_count = 0;
-                        
                     }
                     else if(get_LY(ppu) == 143){
                         ppu->mode = MODE_VBLANK;

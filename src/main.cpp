@@ -12,11 +12,6 @@ int main(int argc, const char **argv){
         return -1;
     }
 
-    // if(argc > 1){
-    //     printf("Too many arguments\n");
-    //     return -1;
-    // }
-
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_AUDIO) == 0) {
         printf("SDL2 Initialization failed: %s", SDL_GetError());
         return 0;
@@ -55,7 +50,6 @@ int main(int argc, const char **argv){
                 is_running = false;
             }
         }
-        // SDL_RenderClear(renderer);
 
         run_gameboy(&gmb, last_counter, perf_count_frequency);
 
