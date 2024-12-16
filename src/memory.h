@@ -13,6 +13,4 @@ struct Memory{
 
 void init_memory(Memory *memory, const char *rom_path);
 
-u8 read_memory(Memory *memory, u16 address, bool from_gpu = false);
-void write_memory(Memory *memory, u16 address, u8 value, bool from_gpu = false);
 

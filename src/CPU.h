@@ -112,7 +112,9 @@ u8 push_stack(CPU *cpu, u8 value);
 u8 sum_and_set_flags(CPU *cpu, u8 summand_left, u8 summand_right, b32 check_carry, bool check_zero);
 
 void handle_interrupts(CPU *cpu, PPU *ppu);
-void set_interrupt(Memory *memory, Interrupt interrupt);
-void unset_interrupt(Memory *memory, Interrupt interrupt);
-void enable_interrupt(Memory *memory, Interrupt interrupt);
-void disable_interrupt(Memory *memory, Interrupt interrupt);
+void set_interrupt(CPU *cpu, Interrupt interrupt);
+void unset_interrupt(CPU *cpu, Interrupt interrupt);
+void enable_interrupt(CPU *cpu, Interrupt interrupt);
+void disable_interrupt(CPU *cpu, Interrupt interrupt);
+
+void update_timers(CPU *cpu);

@@ -2,37 +2,53 @@
 #include "CPU.h"
 
 
+static u8 read_memory_ppu(PPU *ppu, u16 address){
+    if(address >= 0x8000 && address <= 0x9FFF){ // VRAM
+        return ppu->memory->data[address];
+    }
+    else if(address >= 0xFE00 && address <= 0xFE9F && ppu->memory->is_oam_locked){ // OAM
+        return 0xFF;
+    }
+
+    return ppu->memory->data[address];
+}
+
+static void write_memory_ppu(PPU *ppu, u16 address, u8 value){
+    // if(address == 0xFF41 || address == 0xFF44){
+        ppu->memory->data[address] = value;
+    // }
+}
 
 u8 read_lcdc(PPU *ppu){
-    return read_memory(ppu->memory, 0xFF40, true);
+    return read_memory_ppu(ppu, 0xFF40);
 }
 
 u8 get_LY(PPU *ppu){
-    return read_memory(ppu->memory, 0xFF44, true);
+    return read_memory_ppu(ppu, 0xFF44);
 }
 
 u8 get_LYC(PPU *ppu){
-    return read_memory(ppu->memory, 0xFF45, true);
+    return read_memory_ppu(ppu, 0xFF45);
 }
 
 u8 get_SCY(PPU *ppu){
-    return read_memory(ppu->memory, 0xFF42, true);
+    return read_memory_ppu(ppu, 0xFF42);
 }
 
 u8 get_SCX(PPU *ppu){
-    return read_memory(ppu->memory, 0xFF43, true);
+    return read_memory_ppu(ppu, 0xFF43);
 }
 
 u8 get_WY(PPU *ppu){
-    return read_memory(ppu->memory, 0xFF4A, true);
+    return read_memory_ppu(ppu, 0xFF4A);
 }
 
 u8 get_WX(PPU *ppu){
-    return read_memory(ppu->memory, 0xFF4B, true);
+    return read_memory_ppu(ppu, 0xFF4B);
 }
 
 void set_LY(PPU *ppu, u8 value){
-    write_memory(ppu->memory, 0xFF44, value, true);
+    write_memory_ppu(ppu, 0xFF44, value);
 }
 
 void increase_LY(PPU *ppu){
@@ -43,9 +59,9 @@ void increase_LY(PPU *ppu){
 
 void set_stat_ppu_mode(PPU *ppu, u8 mode){
     assert(mode <= 3);
-    u8 stat = read_memory(ppu->memory, 0xFF41, true);
+    u8 stat = read_memory_ppu(ppu, 0xFF41);
     stat = (stat & (~0x03)) | mode; // Set STAT register ppu mode.
-    write_memory(ppu->memory, 0xFF41, stat, true);
+    write_memory_ppu(ppu, 0xFF41, stat);
 }
 
 void init_ppu(PPU *ppu, Memory *memory, SDL_Renderer *renderer){
@@ -104,6 +120,7 @@ static void push_to_screen(PPU *ppu){
     
 }
 
+
 void ppu_render(PPU *ppu){
     i32 pitch;
     u8 *pixels;
@@ -118,15 +135,15 @@ void ppu_render(PPU *ppu){
 }
 
 void set_LYC_LY(PPU *ppu){
-    u8 stat = read_memory(ppu->memory, 0xFF41, true);
+    u8 stat = read_memory_ppu(ppu, 0xFF41);
     stat |= (LCDSTAT_LYC_LY);
-    write_memory(ppu->memory, 0xFF41, stat, true);
+    write_memory_ppu(ppu, 0xFF41, stat);
 }
 
 void unset_LYC_LY(PPU *ppu){
-    u8 stat = read_memory(ppu->memory, 0xFF41, true);
+    u8 stat = read_memory_ppu(ppu, 0xFF41);
     stat &= ~(LCDSTAT_LYC_LY);
-    write_memory(ppu->memory, 0xFF41, stat, true);
+    write_memory_ppu(ppu, 0xFF41, stat);
 }
 
 void ppu_tick(PPU *ppu, CPU *cpu){
@@ -136,8 +153,8 @@ void ppu_tick(PPU *ppu, CPU *cpu){
             set_LYC_LY(ppu);
             if(ppu->cycles == 0x04){
                 if(get_LY(ppu) == get_LYC(ppu)){
-                    if(read_memory(ppu->memory, 0xFF41) & LCDSTAT_LYC_INT){
-                        set_interrupt(ppu->memory, INT_LCD);
+                    if(read_memory_ppu(ppu, 0xFF41) & LCDSTAT_LYC_INT){
+                        set_interrupt(cpu, INT_LCD);
                     }
                 }
             }
@@ -151,17 +168,17 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                 
 
                 set_stat_ppu_mode(ppu, 2);
-                if((read_memory(ppu->memory, 0xFF41) & LCDSTAT_MODE_2)  && !ppu->stat_interrupt_set){
+                if((read_memory_ppu(ppu, 0xFF41) & LCDSTAT_MODE_2)  && !ppu->stat_interrupt_set){
                     ppu->stat_interrupt_set = true;
-                    set_interrupt(ppu->memory, INT_LCD);
+                    set_interrupt(cpu, INT_LCD);
                 }
                 ppu->memory->is_oam_locked = true;
                 
                 Sprite sprite;
-                sprite.y_position = read_memory(ppu->memory, ppu->current_oam_address, true);
-                sprite.x_position = read_memory(ppu->memory, ppu->current_oam_address + 1, true);
-                sprite.tile_index = read_memory(ppu->memory, ppu->current_oam_address + 2, true);
-                sprite.attributes = read_memory(ppu->memory, ppu->current_oam_address + 3, true);
+                sprite.y_position = read_memory_ppu(ppu, ppu->current_oam_address);
+                sprite.x_position = read_memory_ppu(ppu, ppu->current_oam_address + 1);
+                sprite.tile_index = read_memory_ppu(ppu, ppu->current_oam_address + 2);
+                sprite.attributes = read_memory_ppu(ppu, ppu->current_oam_address + 3);
 
                 u8 sprite_height = 8;
                 if(read_lcdc(ppu) & LCDC_OBJ_SIZE){
@@ -192,7 +209,7 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                         u16 address = 0;
                         (read_lcdc(ppu) & LCDC_BG_TILEMAP) ? address = 0x9C00 : address = 0x9800;
                         
-                        ppu->tile_index = read_memory(ppu->memory, address + offset, true); 
+                        ppu->tile_index = read_memory_ppu(ppu, address + offset); 
                         ppu->tile_fetch_state = TILE_FETCH_TILE_LOW;
                         break;
                     }
@@ -200,7 +217,7 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                         if((read_lcdc(ppu) & LCDC_BG_WIN_TILEDATA)){ // $8000 addressing mode
                             u32 offset = 2 * ((get_LY(ppu) + get_SCY(ppu)) % 8); 
                             u16 address = 0x8000 + (ppu->tile_index * 16) + offset; 
-                            ppu->tile_low = read_memory(ppu->memory, address, true);
+                            ppu->tile_low = read_memory_ppu(ppu, address);
                         }
                         else{ // $8800 addressing mode
                             u8 offset = 2 * ((get_LY(ppu) + get_SCY(ppu)) % 8); 
@@ -212,7 +229,7 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                             else{
                                 address = 0x9000 + ((i8)ppu->tile_index * 16) + offset;
                             }
-                            ppu->tile_low = read_memory(ppu->memory, address, true);
+                            ppu->tile_low = read_memory_ppu(ppu, address);
                         }
                         if(!(read_lcdc(ppu) & LCDC_BG_WIN_ENABLE)){
                             ppu->tile_low = 0x00;
@@ -225,7 +242,7 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                         if((read_lcdc(ppu) & LCDC_BG_WIN_TILEDATA)){ // $8000 addressing mode
                             u32 offset = 2 * ((get_LY(ppu) + get_SCY(ppu)) % 8); 
                             u16 address = 0x8000 + (ppu->tile_index * 16) + offset + 1; 
-                            ppu->tile_high = read_memory(ppu->memory, address, true);
+                            ppu->tile_high = read_memory_ppu(ppu, address);
                         }
                         else{ // $8800 addressing mode
                             u8 offset = 2 * ((get_LY(ppu) + get_SCY(ppu)) % 8); 
@@ -237,7 +254,7 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                             else{
                                 address = 0x9000 + ((i8)ppu->tile_index * 16) + offset;
                             }
-                            ppu->tile_high = read_memory(ppu->memory, address + 1, true);
+                            ppu->tile_high = read_memory_ppu(ppu, address + 1);
                         }
                         if(!(read_lcdc(ppu) & LCDC_BG_WIN_ENABLE)){
                             ppu->tile_high = 0x00;
@@ -300,9 +317,9 @@ void ppu_tick(PPU *ppu, CPU *cpu){
             }
             case MODE_HBLANK:{
                 set_stat_ppu_mode(ppu, 0);
-                if((read_memory(ppu->memory, 0xFF41) & LCDSTAT_MODE_0) && !ppu->stat_interrupt_set){
+                if((read_memory_ppu(ppu, 0xFF41) & LCDSTAT_MODE_0) && !ppu->stat_interrupt_set){
                     ppu->stat_interrupt_set = true;
-                    set_interrupt(ppu->memory, INT_LCD);
+                    set_interrupt(cpu, INT_LCD);
                 }
 
                 ppu->pixel_count++;
@@ -326,14 +343,14 @@ void ppu_tick(PPU *ppu, CPU *cpu){
             case MODE_VBLANK:{
                 set_stat_ppu_mode(ppu, 1);
 
-                if((read_memory(ppu->memory, 0xFF41) & LCDSTAT_MODE_1)  && !ppu->stat_interrupt_set){
+                if((read_memory_ppu(ppu, 0xFF41) & LCDSTAT_MODE_1)  && !ppu->stat_interrupt_set){
                     ppu->stat_interrupt_set = true;
-                    set_interrupt(ppu->memory, INT_LCD);
+                    set_interrupt(cpu, INT_LCD);
                 }
 
                 ppu->cycles += 2;
                 if(ppu->cycles == 4)
-                    set_interrupt(ppu->memory, INT_VBLANK); 
+                    set_interrupt(cpu, INT_VBLANK); 
                 if(ppu->cycles == 456){
                     if(get_LY(ppu) == 153){
                         ppu->mode = MODE_OAM_SCAN;

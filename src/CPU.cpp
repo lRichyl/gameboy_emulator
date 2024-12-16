@@ -51,20 +51,46 @@ void init_cpu(CPU *cpu, Memory *memory){
     cpu->SP = 0xFFFE;
 }
 
+static u8 read_memory_cpu(CPU *cpu, u16 address){
+    if(address >= 0x8000 && address <= 0x9FFF && cpu->memory->is_vram_locked){ // VRAM
+            return 0xFF;
+    }
+    else if(address >= 0xFE00 && address <= 0xFE9F && cpu->memory->is_oam_locked){ // OAM
+        return 0xFF;
+    }
+    else if(address == 0xFF00){
+        u8 joy = cpu->memory->data[address];
+        joy |= 0xC0;
+        joy |= 0x0F; // This are modified with button or dpad presses. 1 means not pressed. TODO: Implement this.
+        return joy;
+    }
+    
+    return cpu->memory->data[address];
+}
+
+static void write_memory_cpu(CPU *cpu, u16 address, u8 value){
+    assert(address < MEMORY_SIZE);
+
+    if(address >= 0x8000 && address <= 0x9FFF && cpu->memory->is_vram_locked){ // VRAM
+        return;
+    }
+    else if(address >= 0x0000 && address <= 0x7FFF){ // ROM
+        return;
+    }
+    else if(address == 0xFF04){
+        cpu->memory->data[address] = 0x00;
+        return;
+    }
+
+    cpu->memory->data[address] = value;
+}
+
 u8 fetch(CPU *cpu){
-    u8 byte = read_memory(cpu->memory, cpu->PC);
+    u8 byte = read_memory_cpu(cpu, cpu->PC);
     cpu->PC++;
     return byte;
 }
 
-// static void write_memory(cpu->memory *cpu, u16 address, u8 value){
-//     assert(address <= 0xFFFF);
-//     cpu->memory[address] = value;
-// }
-
-// static u8 read_memory(cpu->memory *cpu, u16 address){
-//     return cpu->memory[address];
-// }
 
 void set_flag(CPU *cpu, Flag flag){
     cpu->flags = cpu->flags | flag;
@@ -137,7 +163,7 @@ static u8 substract_and_set_flags(CPU *cpu, u8 minuend, u8 sustrahend, b32 check
 
 u8 pop_stack(CPU *cpu){
     assert(cpu->SP > 0);
-    u8 value = read_memory(cpu->memory, cpu->SP);
+    u8 value = read_memory_cpu(cpu, cpu->SP);
     cpu->SP++;
     return value;
 }
@@ -145,19 +171,20 @@ u8 pop_stack(CPU *cpu){
 u8 push_stack(CPU *cpu, u8 value){
     assert(cpu->SP > 0);
     cpu->SP--;
-    write_memory(cpu->memory, cpu->SP, value);
+    write_memory_cpu(cpu, cpu->SP, value);
     return value;
 }
+
 
 static void print_cpu(CPU *cpu){
     bool zero   = cpu->flags & FLAG_ZERO;
     bool half   = cpu->flags & FLAG_HALFCARRY;
     bool sub    = cpu->flags & FLAG_SUB;
     bool carry  = cpu->flags & FLAG_CARRY;
-    u8 DIV      = read_memory(cpu->memory, 0xFF04);
-    u8 LCDC     = read_memory(cpu->memory, 0xFF40);
-    u8 LY       = read_memory(cpu->memory, 0xFF44);
-    u8 STAT     = read_memory(cpu->memory, 0xFF41);
+    u8 DIV      = read_memory_cpu(cpu, 0xFF04);
+    u8 LCDC     = read_memory_cpu(cpu, 0xFF40);
+    u8 LY       = read_memory_cpu(cpu, 0xFF44);
+    u8 STAT     = read_memory_cpu(cpu, 0xFF41);
 
     printf("PC: \t%X\n", cpu->PC);
     printf("IME: \t%d\n", cpu->IME);
@@ -177,8 +204,6 @@ static void go_to_next_instruction(CPU *cpu){
         cpu->IME = true;
         cpu->scheduled_ei = false;
     }
-    
-
 
     cpu->opcode = fetch(cpu);
     cpu->machine_cycle = 0; 
@@ -255,7 +280,7 @@ i32 run_cpu(CPU *cpu){
                         u8 reg = cpu->opcode & 0x30;
                         reg >>= 4;
                         assert(reg <= 1);
-                        write_memory(cpu->memory, *cpu->wide_register_map[reg], cpu->A);
+                        write_memory_cpu(cpu, *cpu->wide_register_map[reg], cpu->A);
                     }
                     else if(cpu->machine_cycle == 2){
                         go_to_next_instruction(cpu);
@@ -269,7 +294,7 @@ i32 run_cpu(CPU *cpu){
                 case 0x22:{ // LD [HL+], A
                     
                     if(cpu->machine_cycle == 1){
-                        write_memory(cpu->memory, cpu->HL, cpu->A);
+                        write_memory_cpu(cpu, cpu->HL, cpu->A);
                         cpu->HL++;
                     }
                     else if(cpu->machine_cycle == 2){
@@ -281,7 +306,7 @@ i32 run_cpu(CPU *cpu){
                 case 0x32:{ // LD [HL-], A
                     
                     if(cpu->machine_cycle == 1){
-                        write_memory(cpu->memory, cpu->HL, cpu->A);
+                        write_memory_cpu(cpu, cpu->HL, cpu->A);
                         cpu->HL--;
                     }
                     else if(cpu->machine_cycle == 2){
@@ -297,7 +322,7 @@ i32 run_cpu(CPU *cpu){
                         u8 reg = cpu->opcode & 0x30;
                         reg >>= 4;
                         assert(reg <= 1);
-                        mem_value = read_memory(cpu->memory, *cpu->wide_register_map[reg]);
+                        mem_value = read_memory_cpu(cpu, *cpu->wide_register_map[reg]);
                     }
                     else if(cpu->machine_cycle == 2){
                         cpu->A = mem_value;
@@ -311,7 +336,7 @@ i32 run_cpu(CPU *cpu){
                 case 0x2A:{ // LD A, [HL+]
                     
                     if(cpu->machine_cycle == 1){
-                        mem_value = read_memory(cpu->memory, cpu->HL);
+                        mem_value = read_memory_cpu(cpu, cpu->HL);
                         cpu->HL++;
                     }
                     else if(cpu->machine_cycle == 2){
@@ -325,7 +350,7 @@ i32 run_cpu(CPU *cpu){
                 case 0x3A:{  // LD A, [HL+]
                     
                     if(cpu->machine_cycle == 1){
-                        mem_value = read_memory(cpu->memory, cpu->HL);
+                        mem_value = read_memory_cpu(cpu, cpu->HL);
                         cpu->HL--;
                     }
                     else if(cpu->machine_cycle == 2){
@@ -346,11 +371,11 @@ i32 run_cpu(CPU *cpu){
                     }
                     else if(cpu->machine_cycle == 3){
                     imm = imm = (imm_high << 8) | imm_low;
-                    write_memory(cpu->memory, imm, cpu->SP & 0x00FF);
+                    write_memory_cpu(cpu, imm, cpu->SP & 0x00FF);
                     imm++;
                     }
                     else if(cpu->machine_cycle == 4){
-                    write_memory(cpu->memory, imm, (cpu->SP & 0xFF00) >> 8);
+                    write_memory_cpu(cpu, imm, (cpu->SP & 0xFF00) >> 8);
                     }
                     else if(cpu->machine_cycle == 5){
                         go_to_next_instruction(cpu);
@@ -480,11 +505,11 @@ i32 run_cpu(CPU *cpu){
                 case 0x34:{ // INC [HL]
                     
                     if(cpu->machine_cycle == 1){
-                        mem_value = read_memory(cpu->memory, cpu->HL);
+                        mem_value = read_memory_cpu(cpu, cpu->HL);
                     }
                     else if(cpu->machine_cycle == 2){
                         mem_value = sum_and_set_flags(cpu, mem_value, 1, false, true);
-                        write_memory(cpu->memory, cpu->HL, mem_value);
+                        write_memory_cpu(cpu, cpu->HL, mem_value);
                     }
                     else if(cpu->machine_cycle == 3){
                         go_to_next_instruction(cpu);
@@ -518,11 +543,11 @@ i32 run_cpu(CPU *cpu){
                 case 0x35:{ // DEC [HL]
                     
                     if(cpu->machine_cycle == 1){
-                        mem_value = read_memory(cpu->memory, cpu->HL);
+                        mem_value = read_memory_cpu(cpu, cpu->HL);
                     }
                     else if(cpu->machine_cycle == 2){
                         mem_value = substract_and_set_flags(cpu, mem_value, 1, false, true);
-                        write_memory(cpu->memory, cpu->HL, mem_value);
+                        write_memory_cpu(cpu, cpu->HL, mem_value);
                     }
                     else if(cpu->machine_cycle == 3){
                         go_to_next_instruction(cpu);
@@ -567,7 +592,7 @@ i32 run_cpu(CPU *cpu){
                         immr8 = fetch(cpu);    
                     }
                     else if(cpu->machine_cycle == 2){
-                        write_memory(cpu->memory, cpu->HL, immr8);
+                        write_memory_cpu(cpu, cpu->HL, immr8);
 
                     }else if(cpu->machine_cycle == 3){
                         go_to_next_instruction(cpu);
@@ -849,10 +874,10 @@ i32 run_cpu(CPU *cpu){
                     go_to_next_instruction(cpu);
                 }
                 else if(dest == 6 && src != 6){ // LD [HL], r8
-                    write_memory(cpu->memory, cpu->HL, *cpu->register_map[src]);
+                    write_memory_cpu(cpu, cpu->HL, *cpu->register_map[src]);
                 }
                 else if(dest != 6 && src == 6){ // LD r8, [HL]
-                    mem_value = read_memory(cpu->memory, cpu->HL);
+                    mem_value = read_memory_cpu(cpu, cpu->HL);
                 }
                 else{
                     assert(dest != 6);
@@ -883,7 +908,7 @@ i32 run_cpu(CPU *cpu){
                             go_to_next_instruction(cpu);
                         }
                         else if (reg == 6){ // ADD A, [HL]
-                            mem_value = read_memory(cpu->memory, cpu->HL);
+                            mem_value = read_memory_cpu(cpu, cpu->HL);
                         }
 
                     }
@@ -908,7 +933,7 @@ i32 run_cpu(CPU *cpu){
                             go_to_next_instruction(cpu);
                         }
                         else if (reg == 6){ // ADC A, [HL]
-                            mem_value = read_memory(cpu->memory, cpu->HL);
+                            mem_value = read_memory_cpu(cpu, cpu->HL);
                         }
 
                     }
@@ -933,7 +958,7 @@ i32 run_cpu(CPU *cpu){
                             go_to_next_instruction(cpu);
                         }
                         else if (reg == 6){ // SUB A, [HL]
-                            mem_value = read_memory(cpu->memory, cpu->HL);
+                            mem_value = read_memory_cpu(cpu, cpu->HL);
                         }
 
                     }
@@ -958,7 +983,7 @@ i32 run_cpu(CPU *cpu){
                             go_to_next_instruction(cpu);
                         }
                         else if (reg == 6){ // SBC A, [HL]
-                            mem_value = read_memory(cpu->memory, cpu->HL);
+                            mem_value = read_memory_cpu(cpu, cpu->HL);
                         }
 
                     }
@@ -989,7 +1014,7 @@ i32 run_cpu(CPU *cpu){
                             go_to_next_instruction(cpu);
                         }
                         else if (reg == 6){ // AND A, [HL]
-                            mem_value = read_memory(cpu->memory, cpu->HL);
+                            mem_value = read_memory_cpu(cpu, cpu->HL);
                         }
 
                     }
@@ -1024,7 +1049,7 @@ i32 run_cpu(CPU *cpu){
                             go_to_next_instruction(cpu);
                         }
                         else if (reg == 6){ // XOR A, [HL]
-                            mem_value = read_memory(cpu->memory, cpu->HL);
+                            mem_value = read_memory_cpu(cpu, cpu->HL);
                         }
 
                     }
@@ -1059,7 +1084,7 @@ i32 run_cpu(CPU *cpu){
                             go_to_next_instruction(cpu);
                         }
                         else if (reg == 6){ // OR A, [HL]
-                            mem_value = read_memory(cpu->memory, cpu->HL);
+                            mem_value = read_memory_cpu(cpu, cpu->HL);
                         }
 
                     }
@@ -1088,7 +1113,7 @@ i32 run_cpu(CPU *cpu){
                             go_to_next_instruction(cpu);
                         }
                         else if (reg == 6){ // CP A, [HL]
-                            mem_value = read_memory(cpu->memory, cpu->HL);
+                            mem_value = read_memory_cpu(cpu, cpu->HL);
                         }
 
                     }
@@ -1475,11 +1500,11 @@ i32 run_cpu(CPU *cpu){
                     }
                     else if(cpu->machine_cycle == 4){
                         assert(cpu->SP > 0);
-                        write_memory(cpu->memory, cpu->SP, cpu->PCH);
+                        write_memory_cpu(cpu, cpu->SP, cpu->PCH);
                         cpu->SP--;
                     }
                     else if(cpu->machine_cycle == 5){
-                        write_memory(cpu->memory, cpu->SP, cpu->PCL);
+                        write_memory_cpu(cpu, cpu->SP, cpu->PCL);
                         imm = (imm_high << 8) | (imm_low);
                         cpu->PC = imm;
                     }
@@ -1505,11 +1530,11 @@ i32 run_cpu(CPU *cpu){
                     }
                     else if(cpu->machine_cycle == 4){
                         assert(cpu->SP > 0);
-                        write_memory(cpu->memory, cpu->SP, cpu->PCH);
+                        write_memory_cpu(cpu, cpu->SP, cpu->PCH);
                         cpu->SP--;
                     }
                     else if(cpu->machine_cycle == 5){
-                        write_memory(cpu->memory, cpu->SP, cpu->PCL);
+                        write_memory_cpu(cpu, cpu->SP, cpu->PCL);
                         imm = (imm_high << 8) | (imm_low);
                         cpu->PC = imm;
                     }
@@ -1535,11 +1560,11 @@ i32 run_cpu(CPU *cpu){
                     }
                     else if(cpu->machine_cycle == 4){
                         assert(cpu->SP > 0);
-                        write_memory(cpu->memory, cpu->SP, cpu->PCH);
+                        write_memory_cpu(cpu, cpu->SP, cpu->PCH);
                         cpu->SP--;
                     }
                     else if(cpu->machine_cycle == 5){
-                        write_memory(cpu->memory, cpu->SP, cpu->PCL);
+                        write_memory_cpu(cpu, cpu->SP, cpu->PCL);
                         imm = (imm_high << 8) | (imm_low);
                         cpu->PC = imm;
                     }
@@ -1565,11 +1590,11 @@ i32 run_cpu(CPU *cpu){
                     }
                     else if(cpu->machine_cycle == 4){
                         assert(cpu->SP > 0);
-                        write_memory(cpu->memory, cpu->SP, cpu->PCH);
+                        write_memory_cpu(cpu, cpu->SP, cpu->PCH);
                         cpu->SP--;
                     }
                     else if(cpu->machine_cycle == 5){
-                        write_memory(cpu->memory, cpu->SP, cpu->PCL);
+                        write_memory_cpu(cpu, cpu->SP, cpu->PCL);
                         imm = (imm_high << 8) | (imm_low);
                         cpu->PC = imm;
                     }
@@ -1592,11 +1617,11 @@ i32 run_cpu(CPU *cpu){
                     }
                     else if(cpu->machine_cycle == 4){
                         assert(cpu->SP > 0);
-                        write_memory(cpu->memory, cpu->SP, cpu->PCH);
+                        write_memory_cpu(cpu, cpu->SP, cpu->PCH);
                         cpu->SP--;
                     }
                     else if(cpu->machine_cycle == 5){
-                        write_memory(cpu->memory, cpu->SP, cpu->PCL);
+                        write_memory_cpu(cpu, cpu->SP, cpu->PCL);
                         imm = (imm_high << 8) | (imm_low);
                         cpu->PC = imm;
                     }
@@ -1620,11 +1645,11 @@ i32 run_cpu(CPU *cpu){
                     }
                     else if(cpu->machine_cycle == 2){
                         assert(cpu->SP > 0);
-                        write_memory(cpu->memory, cpu->SP, cpu->PCH);
+                        write_memory_cpu(cpu, cpu->SP, cpu->PCH);
                         cpu->SP--;
                     }
                     else if(cpu->machine_cycle == 3){
-                        write_memory(cpu->memory, cpu->SP, cpu->PCL);
+                        write_memory_cpu(cpu, cpu->SP, cpu->PCL);
                         u8 target = (cpu->opcode & 0x38) >> 3;
                         u16 address = target * 0x08;
                         cpu->PC = address;
@@ -1641,12 +1666,12 @@ i32 run_cpu(CPU *cpu){
                 case 0xE1:
                 case 0xF1:{ // POP r16
                     if(cpu->machine_cycle == 1){
-                        imm_low = read_memory(cpu->memory, cpu->SP);
+                        imm_low = read_memory_cpu(cpu, cpu->SP);
                         cpu->SP++;
                     }
                     else if(cpu->machine_cycle == 2){
                         assert(cpu->SP > 0);
-                        imm_high = read_memory(cpu->memory, cpu->SP);
+                        imm_high = read_memory_cpu(cpu, cpu->SP);
                         cpu->SP++;
                     }
                     else if(cpu->machine_cycle == 3){
@@ -1668,12 +1693,12 @@ i32 run_cpu(CPU *cpu){
                     else if(cpu->machine_cycle == 2){
                         assert(cpu->SP > 0);
                         u8 src = (cpu->opcode & 0x30) >> 4;
-                        write_memory(cpu->memory, cpu->SP, (u8)((*(cpu->wide_register_map[src]) & 0xFF00) >> 8));
+                        write_memory_cpu(cpu, cpu->SP, (u8)((*(cpu->wide_register_map[src]) & 0xFF00) >> 8));
                         cpu->SP--;
                     }
                     else if(cpu->machine_cycle == 3){
                         u8 src = (cpu->opcode & 0x30) >> 4;
-                        write_memory(cpu->memory, cpu->SP, (u8)((*(cpu->wide_register_map[src]) & 0x00FF)));
+                        write_memory_cpu(cpu, cpu->SP, (u8)((*(cpu->wide_register_map[src]) & 0x00FF)));
                     }
                     else if(cpu->machine_cycle == 4){
                         go_to_next_instruction(cpu);
@@ -1691,7 +1716,7 @@ i32 run_cpu(CPU *cpu){
                 case 0xE2:{ // LDH [C], A
                     if(cpu->machine_cycle == 1){
                         u16 address = 0xFF00 + cpu->C;
-                        write_memory(cpu->memory, address, cpu->A);
+                        write_memory_cpu(cpu, address, cpu->A);
                     }
                     else if(cpu->machine_cycle == 2){
                         go_to_next_instruction(cpu);
@@ -1706,7 +1731,7 @@ i32 run_cpu(CPU *cpu){
                     }
                     else if(cpu->machine_cycle == 2){
                         u16 address = 0xFF00 + immr8;
-                        write_memory(cpu->memory, address, cpu->A);
+                        write_memory_cpu(cpu, address, cpu->A);
                     }
                     else if(cpu->machine_cycle == 3){
                         go_to_next_instruction(cpu);
@@ -1723,7 +1748,7 @@ i32 run_cpu(CPU *cpu){
                         imm_high = fetch(cpu);
                     }
                     else if(cpu->machine_cycle == 3){
-                        write_memory(cpu->memory, imm, cpu->A);
+                        write_memory_cpu(cpu, imm, cpu->A);
                     }
                     else if(cpu->machine_cycle == 4){
                         go_to_next_instruction(cpu);
@@ -1735,7 +1760,7 @@ i32 run_cpu(CPU *cpu){
                 case 0xF2:{ // LDH A, [C]
                     if(cpu->machine_cycle == 1){
                         u16 address = 0xFF00 + cpu->C;
-                        mem_value = read_memory(cpu->memory, address);
+                        mem_value = read_memory_cpu(cpu, address);
                     }
                     else if(cpu->machine_cycle == 2){
                         cpu->A = mem_value;
@@ -1751,7 +1776,7 @@ i32 run_cpu(CPU *cpu){
                     }
                     else if(cpu->machine_cycle == 2){
                         u16 address = 0xFF00 + immr8;
-                        mem_value = read_memory(cpu->memory, address);
+                        mem_value = read_memory_cpu(cpu, address);
                     }
                     else if(cpu->machine_cycle == 3){
                         cpu->A = mem_value;
@@ -1769,7 +1794,7 @@ i32 run_cpu(CPU *cpu){
                         imm_high = fetch(cpu);
                     }
                     else if(cpu->machine_cycle == 3){
-                        mem_value = read_memory(cpu->memory, imm);
+                        mem_value = read_memory_cpu(cpu, imm);
                     }
                     else if(cpu->machine_cycle == 4){
                         cpu->A = mem_value;
@@ -1890,7 +1915,7 @@ i32 run_cpu(CPU *cpu){
                                 cpu->is_extended = false;
                             }
                             else{
-                                mem_value = read_memory(cpu->memory, cpu->HL);
+                                mem_value = read_memory_cpu(cpu, cpu->HL);
                             }
                         
                         }
@@ -1908,7 +1933,7 @@ i32 run_cpu(CPU *cpu){
                             unset_flag(cpu, FLAG_SUB);
                             unset_flag(cpu, FLAG_HALFCARRY); 
 
-                            write_memory(cpu->memory, cpu->HL, mem_value);
+                            write_memory_cpu(cpu, cpu->HL, mem_value);
                         }
                         else if(cpu->machine_cycle == 3){
                             go_to_next_instruction(cpu);
@@ -1939,7 +1964,7 @@ i32 run_cpu(CPU *cpu){
                                 cpu->is_extended = false;
                             }
                             else{
-                                mem_value = read_memory(cpu->memory, cpu->HL);
+                                mem_value = read_memory_cpu(cpu, cpu->HL);
                             }
                         
                         }
@@ -1957,7 +1982,7 @@ i32 run_cpu(CPU *cpu){
                             unset_flag(cpu, FLAG_SUB);
                             unset_flag(cpu, FLAG_HALFCARRY);
 
-                            write_memory(cpu->memory, cpu->HL, mem_value);
+                            write_memory_cpu(cpu, cpu->HL, mem_value);
                         }
                         else if(cpu->machine_cycle == 3){
                             go_to_next_instruction(cpu);
@@ -1990,7 +2015,7 @@ i32 run_cpu(CPU *cpu){
                                 cpu->is_extended = false;
                             }
                             else{
-                                mem_value = read_memory(cpu->memory, cpu->HL);
+                                mem_value = read_memory_cpu(cpu, cpu->HL);
                             }
                         
                         }
@@ -2010,7 +2035,7 @@ i32 run_cpu(CPU *cpu){
                             unset_flag(cpu, FLAG_SUB);
                             unset_flag(cpu, FLAG_HALFCARRY);
 
-                            write_memory(cpu->memory, cpu->HL, mem_value);
+                            write_memory_cpu(cpu, cpu->HL, mem_value);
                         }
                         else if(cpu->machine_cycle == 3){
                             go_to_next_instruction(cpu);
@@ -2043,7 +2068,7 @@ i32 run_cpu(CPU *cpu){
                                 cpu->is_extended = false;
                             }
                             else{
-                                mem_value = read_memory(cpu->memory, cpu->HL);
+                                mem_value = read_memory_cpu(cpu, cpu->HL);
                             }
                         
                         }
@@ -2063,7 +2088,7 @@ i32 run_cpu(CPU *cpu){
                             unset_flag(cpu, FLAG_SUB);
                             unset_flag(cpu, FLAG_HALFCARRY);
 
-                            write_memory(cpu->memory, cpu->HL, mem_value);
+                            write_memory_cpu(cpu, cpu->HL, mem_value);
                         }
                         else if(cpu->machine_cycle == 3){
                             go_to_next_instruction(cpu);
@@ -2093,7 +2118,7 @@ i32 run_cpu(CPU *cpu){
                                 cpu->is_extended = false;
                             }
                             else{
-                                mem_value = read_memory(cpu->memory, cpu->HL);
+                                mem_value = read_memory_cpu(cpu, cpu->HL);
                             }
                         
                         }
@@ -2110,7 +2135,7 @@ i32 run_cpu(CPU *cpu){
                             unset_flag(cpu, FLAG_SUB);
                             unset_flag(cpu, FLAG_HALFCARRY);
 
-                            write_memory(cpu->memory, cpu->HL, mem_value);
+                            write_memory_cpu(cpu, cpu->HL, mem_value);
                         }
                         else if(cpu->machine_cycle == 3){
                             go_to_next_instruction(cpu);
@@ -2144,7 +2169,7 @@ i32 run_cpu(CPU *cpu){
                                 cpu->is_extended = false;
                             }
                             else{
-                                mem_value = read_memory(cpu->memory, cpu->HL);
+                                mem_value = read_memory_cpu(cpu, cpu->HL);
                             }
                         
                         }
@@ -2165,7 +2190,7 @@ i32 run_cpu(CPU *cpu){
                             unset_flag(cpu, FLAG_SUB);
                             unset_flag(cpu, FLAG_HALFCARRY);
 
-                            write_memory(cpu->memory, cpu->HL, mem_value);
+                            write_memory_cpu(cpu, cpu->HL, mem_value);
                         }
                         else if(cpu->machine_cycle == 3){
                             go_to_next_instruction(cpu);
@@ -2197,7 +2222,7 @@ i32 run_cpu(CPU *cpu){
                                 cpu->is_extended = false;
                             }
                             else{
-                                mem_value = read_memory(cpu->memory, cpu->HL);
+                                mem_value = read_memory_cpu(cpu, cpu->HL);
                             }
                         
                         }
@@ -2216,7 +2241,7 @@ i32 run_cpu(CPU *cpu){
                             unset_flag(cpu, FLAG_SUB);
                             unset_flag(cpu, FLAG_HALFCARRY);
 
-                            write_memory(cpu->memory, cpu->HL, mem_value);
+                            write_memory_cpu(cpu, cpu->HL, mem_value);
                         }
                         else if(cpu->machine_cycle == 3){
                             go_to_next_instruction(cpu);
@@ -2247,7 +2272,7 @@ i32 run_cpu(CPU *cpu){
                                 cpu->is_extended = false;
                             }
                             else{
-                                mem_value = read_memory(cpu->memory, cpu->HL);
+                                mem_value = read_memory_cpu(cpu, cpu->HL);
                             }
                         
                         }
@@ -2265,7 +2290,7 @@ i32 run_cpu(CPU *cpu){
                             unset_flag(cpu, FLAG_SUB);
                             unset_flag(cpu, FLAG_HALFCARRY);
 
-                            write_memory(cpu->memory, cpu->HL, mem_value);
+                            write_memory_cpu(cpu, cpu->HL, mem_value);
                         }
                         else if(cpu->machine_cycle == 3){
                             go_to_next_instruction(cpu);
@@ -2298,7 +2323,7 @@ i32 run_cpu(CPU *cpu){
                         cpu->is_extended = false;
                     }
                     else{
-                        mem_value = read_memory(cpu->memory, cpu->HL);
+                        mem_value = read_memory_cpu(cpu, cpu->HL);
                     }
                     
                 }
@@ -2309,7 +2334,7 @@ i32 run_cpu(CPU *cpu){
                     unset_flag(cpu, FLAG_SUB);
                     set_flag(cpu, FLAG_HALFCARRY);
 
-                    write_memory(cpu->memory, cpu->HL, mem_value);
+                    write_memory_cpu(cpu, cpu->HL, mem_value);
                     go_to_next_instruction(cpu);
                     cpu->is_extended = false;
                 }
@@ -2328,7 +2353,7 @@ i32 run_cpu(CPU *cpu){
                         cpu->is_extended = false;
                     }
                     else{
-                        mem_value = read_memory(cpu->memory, cpu->HL);
+                        mem_value = read_memory_cpu(cpu, cpu->HL);
                     }
                     
                 }
@@ -2336,7 +2361,7 @@ i32 run_cpu(CPU *cpu){
                     u8 bit = (cpu->opcode & 0x38) >> 3;
                     mem_value &= ~(1 << bit);
 
-                    write_memory(cpu->memory, cpu->HL, mem_value);
+                    write_memory_cpu(cpu, cpu->HL, mem_value);
                 }
                 else if(cpu->machine_cycle == 3){
                     go_to_next_instruction(cpu);
@@ -2357,7 +2382,7 @@ i32 run_cpu(CPU *cpu){
                         cpu->is_extended = false;
                     }
                     else{
-                        mem_value = read_memory(cpu->memory, cpu->HL);
+                        mem_value = read_memory_cpu(cpu, cpu->HL);
                     }
                     
                 }
@@ -2365,7 +2390,7 @@ i32 run_cpu(CPU *cpu){
                     u8 bit = (cpu->opcode & 0x38) >> 3;
                     mem_value |= (1 << bit);
 
-                    write_memory(cpu->memory, cpu->HL, mem_value);
+                    write_memory_cpu(cpu, cpu->HL, mem_value);
                 }
                 else if(cpu->machine_cycle == 3){
                     go_to_next_instruction(cpu);
@@ -2415,41 +2440,41 @@ void handle_interrupts(CPU *cpu, PPU *ppu){
         cycle++;
     }
     else{
-        u8 IE = read_memory(cpu->memory, 0xFFFF);
-        u8 IF = read_memory(cpu->memory, 0xFF0F);
+        u8 IE = read_memory_cpu(cpu, 0xFFFF);
+        u8 IF = read_memory_cpu(cpu, 0xFF0F);
 
         if(cpu->IME && !cpu->handling_interrupt){ // If interrupts are enabled.
             if((IE & INT_VBLANK) && (IF & INT_VBLANK)){
                 cpu->PC--;
-                unset_interrupt(cpu->memory, INT_VBLANK);
+                unset_interrupt(cpu, INT_VBLANK);
                 cpu->interrupt = INT_VBLANK;
                 cpu->handling_interrupt = true;
                 cpu->halt = false;
             }
             else if((IE & INT_LCD) && (IF & INT_LCD)){
                 cpu->PC--;
-                unset_interrupt(cpu->memory, INT_LCD);
+                unset_interrupt(cpu, INT_LCD);
                 cpu->interrupt = INT_LCD;
                 cpu->handling_interrupt = true;
                 cpu->halt = false;
             }
             else if((IE & INT_TIMER) && (IF & INT_TIMER)){
                 cpu->PC--;
-                unset_interrupt(cpu->memory, INT_TIMER);
+                unset_interrupt(cpu, INT_TIMER);
                 cpu->interrupt = INT_TIMER;
                 cpu->handling_interrupt = true;
                 cpu->halt = false;
             }
             else if((IE & INT_SERIAL) && (IF & INT_SERIAL)){
                 cpu->PC--;
-                unset_interrupt(cpu->memory, INT_SERIAL);
+                unset_interrupt(cpu, INT_SERIAL);
                 cpu->interrupt = INT_TIMER;
                 cpu->handling_interrupt = true;
                 cpu->halt = false;
             }
             else if((IE & INT_JOYPAD) && (IF & INT_JOYPAD)){
                 cpu->PC--;
-                unset_interrupt(cpu->memory, INT_JOYPAD);
+                unset_interrupt(cpu, INT_JOYPAD);
                 cpu->interrupt = INT_JOYPAD;
                 cpu->handling_interrupt = true;
                 cpu->halt = false;
@@ -2458,30 +2483,69 @@ void handle_interrupts(CPU *cpu, PPU *ppu){
     }
 }
 
-void set_interrupt(Memory *memory, Interrupt interrupt){
+void set_interrupt(CPU *cpu, Interrupt interrupt){
     u16 address = 0xFF0F;
-    u8 IF = read_memory(memory, address);
+    u8 IF = read_memory_cpu(cpu, address);
     IF |= interrupt;
-    write_memory(memory, address, IF);
+    write_memory_cpu(cpu, address, IF);
 }
 
-void unset_interrupt(Memory *memory, Interrupt interrupt){
+void unset_interrupt(CPU *cpu, Interrupt interrupt){
     u16 address = 0xFF0F;
-    u8 IF = read_memory(memory, address);
+    u8 IF = read_memory_cpu(cpu, address);
     IF &= ~(interrupt);
-    write_memory(memory, address, IF);
+    write_memory_cpu(cpu, address, IF);
 }
 
-void enable_interrupt(Memory *memory, Interrupt interrupt){
+void enable_interrupt(CPU *cpu, Interrupt interrupt){
     u16 address = 0xFFFF;
-    u8 IE = read_memory(memory, address);
+    u8 IE = read_memory_cpu(cpu, address);
     IE |= interrupt;
-    write_memory(memory, address, IE);
+    write_memory_cpu(cpu, address, IE);
 }
 
-void disable_interrupt(Memory *memory, Interrupt interrupt){
+void disable_interrupt(CPU *cpu, Interrupt interrupt){
     u16 address = 0xFFFF;
-    u8 IE = read_memory(memory, address);
+    u8 IE = read_memory_cpu(cpu, address);
     IE &= ~(interrupt);
-    write_memory(memory, 0xFF0F, IE);
+    write_memory_cpu(cpu, 0xFF0F, IE);
+}
+
+static void increment_div(CPU *cpu){
+    u8 div = read_memory_cpu(cpu, 0xFF04);
+    div++;
+    write_memory_cpu(cpu, 0xFF04, div);
+}
+
+static void increment_tima(CPU *cpu){
+    u8 tima = read_memory_cpu(cpu, 0xFF05);
+    u8 previous_tima = tima;
+    tima++;
+    write_memory_cpu(cpu, 0xFF05, tima);
+    if(tima == 0x00 && previous_tima == 0xFF){
+        set_interrupt(cpu, INT_TIMER);
+        tima = read_memory_cpu(cpu, 0xFF06);
+    }
+}
+
+void update_timers(CPU *cpu){
+    write_memory_cpu(cpu, 0xFF04, (cpu->internal_counter & 0xFF00) >> 8);
+    cpu->internal_counter += 4;
+
+    u8 TAC = read_memory_cpu(cpu, 0xFF07);
+    if(TAC & 0x04){
+        u8 clock = TAC & 0x03;
+        u32 every = 0;
+        switch (clock){
+            case 0x00:{every = 256; break;}
+            case 0x01:{every = 4; break;}
+            case 0x02:{every = 16; break;}
+            case 0x03:{every = 64; break;}
+        }
+
+        if(cpu->cycles_delta % (every * 4) == 0){
+            increment_tima(cpu);
+        }
+        
+    }
 }
