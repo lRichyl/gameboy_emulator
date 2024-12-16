@@ -97,6 +97,7 @@ struct PPU{
     bool do_dummy_fetch;
     bool skip_fifo;
     bool frame_ready;
+    bool stat_interrupt_set;
 
     Array<Pixel> bg_fifo;
     Array<Pixel> sprite_fifo;

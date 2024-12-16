@@ -17,8 +17,8 @@ void increment_div(Memory *memory){
 void increment_tima(Memory *memory){
     u8 tima = read_memory(memory, 0xFF05);
     u8 previous_tima = tima;
-    write_memory(memory, 0xFF05, tima);
     tima++;
+    write_memory(memory, 0xFF05, tima);
     if(tima == 0x00 && previous_tima == 0xFF){
         set_interrupt(memory, INT_TIMER);
         tima = read_memory(memory, 0xFF06);
@@ -31,7 +31,7 @@ void run_gameboy(Gameboy *gmb, LARGE_INTEGER starting_time, i64 perf_count_frequ
     while(!ppu->frame_ready){
         // Handling interrupts
         if(cpu->fetched_next_instruction){
-            handle_interrupts(cpu);
+            handle_interrupts(cpu, ppu);
         }
         if(!cpu->handling_interrupt && !cpu->halt){
             cpu->cycles_delta += run_cpu(cpu);
@@ -79,7 +79,7 @@ void run_gameboy(Gameboy *gmb, LARGE_INTEGER starting_time, i64 perf_count_frequ
         i64 counter_elapsed = end_counter.QuadPart - starting_time.QuadPart; 
         f32 ms_elapsed     = (f32)((1000.0f*(f32)counter_elapsed) / (f32)perf_count_frequency);
         if(ms_elapsed >= gmb->frame_time){
-            printf("Milliseconds elapsed: \t%f\n", ms_elapsed);
+            //printf("Milliseconds elapsed: \t%f\n", ms_elapsed);
             // printf("Cycles ran last frame: \t%d\n", cycles_delta);
             break;  
         } 

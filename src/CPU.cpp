@@ -1,4 +1,5 @@
 #include "CPU.h"
+#include "ppu.h"
 #include <stdio.h>
 
 void init_cpu(CPU *cpu, Memory *memory){
@@ -26,7 +27,7 @@ void init_cpu(CPU *cpu, Memory *memory){
     cpu->handling_interrupt = false;
     cpu->fetched_next_instruction = false;
 
-    cpu->PC = 0x0100; // Temporary
+    cpu->PC = 0x000; // Temporary
     cpu->internal_counter = 0xABCC;
 
     cpu->wide_register_map[0] = &cpu->BC;
@@ -176,7 +177,7 @@ static void go_to_next_instruction(CPU *cpu){
         cpu->IME = true;
         cpu->scheduled_ei = false;
     }
-    assert(cpu->PC != 0x38);
+    
 
 
     cpu->opcode = fetch(cpu);
@@ -2383,7 +2384,7 @@ i32 run_cpu(CPU *cpu){
 }
 
 
-void handle_interrupts(CPU *cpu){
+void handle_interrupts(CPU *cpu, PPU *ppu){
     if(cpu->handling_interrupt){
         static i32 cycle = 0;
         cpu->IME = false;
@@ -2401,7 +2402,7 @@ void handle_interrupts(CPU *cpu){
             u16 address = 0;
             switch(cpu->interrupt){
                 case INT_VBLANK:{address = 0x40; break;}
-                case INT_LCD:   {address = 0x48; break;}
+                case INT_LCD:   {address = 0x48; ppu->stat_interrupt_set = false; break;}
                 case INT_TIMER: {address = 0x50; break;}
                 case INT_SERIAL:{address = 0x58; break;}
                 case INT_JOYPAD:{address = 0x60; break;}

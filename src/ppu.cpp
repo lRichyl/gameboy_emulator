@@ -114,6 +114,7 @@ void ppu_render(PPU *ppu){
 
     // SDL_UpdateTexture(ppu->framebuffer, NULL, ppu->buffer, 160*3);
     SDL_RenderTexture(ppu->renderer, ppu->framebuffer, NULL, NULL);
+    memset(ppu->buffer, 0, BUFFER_SIZE);
 }
 
 void set_LYC_LY(PPU *ppu){
@@ -129,7 +130,7 @@ void unset_LYC_LY(PPU *ppu){
 }
 
 void ppu_tick(PPU *ppu, CPU *cpu){
-
+    static bool once = false;
     if(read_lcdc(ppu) & LCDC_LCD_PPU_ENABLE){
         if(get_LY(ppu) == get_LYC(ppu)){
             set_LYC_LY(ppu);
@@ -150,7 +151,8 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                 
 
                 set_stat_ppu_mode(ppu, 2);
-                if(read_memory(ppu->memory, 0xFF41) & LCDSTAT_MODE_2){
+                if((read_memory(ppu->memory, 0xFF41) & LCDSTAT_MODE_2)  && !ppu->stat_interrupt_set){
+                    ppu->stat_interrupt_set = true;
                     set_interrupt(ppu->memory, INT_LCD);
                 }
                 ppu->memory->is_oam_locked = true;
@@ -298,7 +300,8 @@ void ppu_tick(PPU *ppu, CPU *cpu){
             }
             case MODE_HBLANK:{
                 set_stat_ppu_mode(ppu, 0);
-                if(read_memory(ppu->memory, 0xFF41) & LCDSTAT_MODE_0){
+                if((read_memory(ppu->memory, 0xFF41) & LCDSTAT_MODE_0) && !ppu->stat_interrupt_set){
+                    ppu->stat_interrupt_set = true;
                     set_interrupt(ppu->memory, INT_LCD);
                 }
 
@@ -312,8 +315,6 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                     }
                     else if(get_LY(ppu) == 143){
                         ppu->mode = MODE_VBLANK;
-                        set_interrupt(ppu->memory, INT_VBLANK);                   
-                        
                     }
                     increase_LY(ppu);
 
@@ -323,14 +324,16 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                 break;
             }
             case MODE_VBLANK:{
-                static u32 vblank_cycles = 0;
                 set_stat_ppu_mode(ppu, 1);
-                if((read_memory(ppu->memory, 0xFF41) & LCDSTAT_MODE_1)){
+
+                if((read_memory(ppu->memory, 0xFF41) & LCDSTAT_MODE_1)  && !ppu->stat_interrupt_set){
+                    ppu->stat_interrupt_set = true;
                     set_interrupt(ppu->memory, INT_LCD);
                 }
 
                 ppu->cycles += 2;
-                vblank_cycles += 2;
+                if(ppu->cycles == 4)
+                    set_interrupt(ppu->memory, INT_VBLANK); 
                 if(ppu->cycles == 456){
                     if(get_LY(ppu) == 153){
                         ppu->mode = MODE_OAM_SCAN;
@@ -338,7 +341,6 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                         ppu->current_pos = 0;
                         ppu_render(ppu);
                         ppu->frame_ready = true;
-                        vblank_cycles = 0;
                     }
                     else{
                         increase_LY(ppu);
@@ -352,9 +354,11 @@ void ppu_tick(PPU *ppu, CPU *cpu){
 
 
         
+        once = true;
 
     }
     else{
+        if(!once) return;
         ppu->current_oam_address = ppu->oam_initial_address;
         ppu->memory->is_oam_locked  = false;
         ppu->memory->is_vram_locked = false;
@@ -363,10 +367,13 @@ void ppu_tick(PPU *ppu, CPU *cpu){
         ppu->tile_x = 0;
         ppu->current_pos = 0;
 
-        ppu->frame_ready = false;
-        memset(ppu->buffer, 255, BUFFER_SIZE);
+        ppu_render(ppu);
+        ppu->frame_ready = true;
+
         
         ppu->cycles = 0;
         set_LY(ppu, 0);
+
+        once = false;
     }
 }

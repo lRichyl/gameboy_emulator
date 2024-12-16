@@ -17,11 +17,19 @@ void init_memory(Memory *memory, const char *rom_path){
 u8 read_memory(Memory *memory, u16 address, bool from_gpu){
     assert(address < MEMORY_SIZE);
     if(from_gpu){
-
+        if(address >= 0x8000 && address <= 0x9FFF && memory->is_vram_locked){ // VRAM
+            memory->data[address];
+        }
     }
     else{
         if(address >= 0x8000 && address <= 0x9FFF && memory->is_vram_locked){ // VRAM
             return 0xFF;
+        }
+        else if(address == 0xFF00){
+            u8 joy = memory->data[address];
+            joy |= 0xC0;
+            joy |= 0x0F; // This are modified with button or dpad presses. 1 means not pressed. TODO: Implement this.
+            return joy;
         }
     }
     
@@ -46,6 +54,7 @@ void write_memory(Memory *memory, u16 address, u8 value, bool from_gpu){
         }
         else if(address == 0xFF04){
             memory->data[address] = 0x00;
+            return;
         }
     }
     memory->data[address] = value;
