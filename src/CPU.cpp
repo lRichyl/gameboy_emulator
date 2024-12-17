@@ -16,11 +16,16 @@ void init_cpu(CPU *cpu, Memory *memory){
 
     cpu->do_first_fetch = true;
     cpu->IME = false;
-    cpu->memory->data[0xFF0F] = 0x0E;
-    cpu->memory->data[0xFFFF] = 0x09;
-    cpu->memory->data[0xFF04] = 0xAB;
+    cpu->DMA_transfer_in_progress = false;
 
-    cpu->memory->data[0xFF41] |= 0x80;
+    cpu->memory->data[0xFF0F] = 0x0E; // IF register. Interrupt flags.
+    cpu->memory->data[0xFFFF] = 0x09; // IE register. Interrupt enable flags.
+    cpu->memory->data[0xFF04] = 0xAB; // DIV register.
+    cpu->memory->data[0xFF47] = 0xE4; // Palette BGP register.
+    cpu->memory->data[0xFF48] = 0xE4; // Palette OBJ0 register.
+    cpu->memory->data[0xFF49] = 0xE4; // Palette OBJ1 register.
+
+    cpu->memory->data[0xFF41] = 0x80; // STAT register.
 
     cpu->scheduled_ei = false;
     cpu->is_extended = false;
@@ -64,6 +69,9 @@ static u8 read_memory_cpu(CPU *cpu, u16 address){
         joy |= 0x0F; // This are modified with button or dpad presses. 1 means not pressed. TODO: Implement this.
         return joy;
     }
+    else if(address >= 0xFE00 && address <= 0xFE9F && cpu->memory->is_oam_locked){ // OAM
+        return 0xFF;
+    }
     
     return cpu->memory->data[address];
 }
@@ -79,6 +87,12 @@ static void write_memory_cpu(CPU *cpu, u16 address, u8 value){
     }
     else if(address == 0xFF04){
         cpu->memory->data[address] = 0x00;
+        return;
+    }
+    else if(address == 0xFF46){ // Initiate DMA transfer. The value written is the upper byte of the address to copy from.
+        cpu->memory->data[address] = value;
+        cpu->DMA_transfer_in_progress = true;
+        cpu->DMA_source = value << 8;
         return;
     }
 
@@ -2547,5 +2561,23 @@ void update_timers(CPU *cpu){
             increment_tima(cpu);
         }
         
+    }
+}
+
+void handle_DMA_transfer(CPU *cpu){
+    if(cpu->DMA_transfer_in_progress){
+        u16 source = cpu->DMA_source + cpu->transferred_bytes;
+        u8 byte = read_memory_cpu(cpu, source);
+        
+        u16 destination = 0xFF00 + cpu->transferred_bytes;
+        write_memory_cpu(cpu, destination, byte);
+
+        cpu->transferred_bytes++;
+
+        // 40 is the size of the OAM table, DMA transfer always copies the entire table.
+        if(cpu->transferred_bytes == 40){
+            cpu->DMA_transfer_in_progress = false;
+            cpu->transferred_bytes = 0;
+        } 
     }
 }

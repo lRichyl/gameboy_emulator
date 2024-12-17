@@ -20,6 +20,8 @@ void run_gameboy(Gameboy *gmb, LARGE_INTEGER starting_time, i64 perf_count_frequ
         if(!cpu->handling_interrupt && !cpu->halt){
             cpu->cycles_delta += run_cpu(cpu);
         }
+
+        handle_DMA_transfer(cpu);
         
         update_timers(cpu);
        

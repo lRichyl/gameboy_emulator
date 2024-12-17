@@ -95,6 +95,10 @@ struct CPU{
     bool halt;
     bool fetched_next_instruction;
     Interrupt interrupt;
+    
+    bool DMA_transfer_in_progress;
+    u8 transferred_bytes;
+    u16 DMA_source;
 };
 
 struct PPU;
@@ -111,6 +115,7 @@ u8 pop_stack(CPU *cpu);
 u8 push_stack(CPU *cpu, u8 value);
 u8 sum_and_set_flags(CPU *cpu, u8 summand_left, u8 summand_right, b32 check_carry, bool check_zero);
 
+void handle_DMA_transfer(CPU *cpu);
 void handle_interrupts(CPU *cpu, PPU *ppu);
 void set_interrupt(CPU *cpu, Interrupt interrupt);
 void unset_interrupt(CPU *cpu, Interrupt interrupt);

@@ -3,12 +3,12 @@
 
 
 static u8 read_memory_ppu(PPU *ppu, u16 address){
-    if(address >= 0x8000 && address <= 0x9FFF){ // VRAM
-        return ppu->memory->data[address];
-    }
-    else if(address >= 0xFE00 && address <= 0xFE9F && ppu->memory->is_oam_locked){ // OAM
-        return 0xFF;
-    }
+    //if(address >= 0x8000 && address <= 0x9FFF){ // VRAM
+    //    return ppu->memory->data[address];
+    //}
+    //else if(address >= 0xFE00 && address <= 0xFE9F){ // OAM
+    //    return 0xFF;
+    //}
 
     return ppu->memory->data[address];
 }
@@ -73,11 +73,13 @@ void init_ppu(PPU *ppu, Memory *memory, SDL_Renderer *renderer){
     ppu->memory = memory;
     ppu->mode = MODE_OAM_SCAN;
     ppu->tile_fetch_state = TILE_FETCH_TILE_INDEX;
-    ppu->sprite_fetch_state = SPRITE_FETCH_INDEX;
-    ppu->sprites = make_array<Sprite>(10);
+    ppu->sprites_processed = 0;
+    ppu->sprites        = make_array<Sprite>(10);
+    ppu->sprites_active = make_array<Sprite>(10);
 
     ppu->bg_fifo     = make_array<Pixel>(8);
     ppu->sprite_fifo = make_array<Pixel>(8);
+    ppu->sprite_mixing_fifo = make_array<Pixel>(8);
 
     ppu->colors[0] = Color{255,255,255}; // White
     ppu->colors[1] = Color{190,190,190}; // Light gray
@@ -91,34 +93,78 @@ void init_ppu(PPU *ppu, Memory *memory, SDL_Renderer *renderer){
     ppu->do_dummy_fetch = true;
     ppu->skip_fifo = false;
     ppu->frame_ready = false;
+    ppu->stop_fifos = false;
+    ppu->fetching_sprite = false;
     set_stat_ppu_mode(ppu, 2);
 }
 
+static void check_if_sprite_is_in_current_position(PPU *ppu){
+    if(ppu->check_sprites){
+        for(int i = 0; i < ppu->sprites.size; i++){
+            Sprite sprite = array_get(&ppu->sprites, i);
+            if(sprite.x_position - 8 == ppu->pixel_count){
+                array_add(&ppu->sprites_active, sprite);
+
+                ppu->stop_fifos = true;
+                ppu->tile_fetch_state = TILE_FETCH_SPRITE_INDEX;
+                break;
+            }
+        }
+        ppu->check_sprites = false;
+    }
+}
+
 static void push_to_screen(PPU *ppu){
+
     if(ppu->bg_fifo.size == 0) return;
+    if(ppu->stop_fifos) return;
 
     u32 offset = 3;
-    Pixel pixel = array_pop(&ppu->bg_fifo);
+    Pixel bg_pixel = array_pop(&ppu->bg_fifo);
+    u16 bg_palette_address = 0xFF47;
+    u8 palette = read_memory_ppu(ppu, bg_palette_address);
+    u8 bg_color_ids[4] = {(palette & 0x3), ((palette & 0xC) >> 2), ((palette & 0x30) >> 4), ((palette & 0xC0) >> 6)};
 
-    Color tint = ppu->colors[pixel.color];
-    // if((read_lcdc(ppu) & LCDC_BG_WIN_ENABLE)) {
-    //     tint = {255, 0, 0};
-    // }else{
-    //     tint = {0, 0, 255};
-    // }
+    // TODO: Here we should return when scrolling.
+    Color color;
+    if(ppu->sprite_fifo.size > 0){
+        Pixel sp_pixel = array_pop(&ppu->sprite_fifo);
+        if(sp_pixel.color == 0 || (sp_pixel.bg_priority && bg_pixel.color != 0)){
 
+            color = ppu->colors[bg_color_ids[bg_pixel.color]];
+        }
+        else{
+            u16 address;
+            sp_pixel.palette == 0 ? address = 0xFF48 : address = 0xFF49; 
+            u8 palette = read_memory_ppu(ppu, address);
 
+            u8 color_ids[4] = {0, ((palette & 0xC) >> 2), ((palette & 0x30) >> 4), ((palette & 0xC0) >> 6)};
+
+            color = ppu->colors[color_ids[sp_pixel.color]];
+            // color = {255,0,0};
+        }
+    }
+    else{
+        color = ppu->colors[bg_color_ids[bg_pixel.color]];
+    }
+
+    u8 previous_pixel_count = ppu->pixel_count;
     if(!ppu->skip_fifo){
         ppu->pixel_count++;
-        ppu->buffer[ppu->current_pos] = tint.r;
-        ppu->buffer[ppu->current_pos + 1] = tint.g;
-        ppu->buffer[ppu->current_pos + 2] = tint.b;
+        ppu->buffer[ppu->current_pos] = color.r;
+        ppu->buffer[ppu->current_pos + 1] = color.g;
+        ppu->buffer[ppu->current_pos + 2] = color.b;
         ppu->current_pos += offset;
-    }
-    if(ppu->bg_fifo.size == 0) ppu->skip_fifo = false;
 
+        
+        ppu->check_sprites = true;
+        
+    }
+
+    if(ppu->bg_fifo.size == 0) ppu->skip_fifo = false;
     
 }
+
 
 
 void ppu_render(PPU *ppu){
@@ -201,8 +247,6 @@ void ppu_tick(PPU *ppu, CPU *cpu){
             case MODE_DRAW:{
                 ppu->memory->is_vram_locked = true;
                 set_stat_ppu_mode(ppu, 3);
-                push_to_screen(ppu);
-                push_to_screen(ppu);
                 switch(ppu->tile_fetch_state){
                     case TILE_FETCH_TILE_INDEX:{
                         u32 offset = ((ppu->tile_x + (get_SCX(ppu) / 8)) & 0x1F) + (32 * (((get_LY(ppu) + get_SCY(ppu)) & 0xFF) / 8));
@@ -297,8 +341,100 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                         }
                         break;
                     }
+                    // SPRITE FETCHING
+                    case TILE_FETCH_SPRITE_INDEX:{
+                        ppu->sprite = array_get(&ppu->sprites_active, ppu->sprites_processed);
+                        ppu->tile_index = ppu->sprite.tile_index;
+                        ppu->tile_fetch_state = TILE_FETCH_SPRITE_LOW;
+                        break;
+                    }
+                    case TILE_FETCH_SPRITE_LOW:{
+                        if((read_lcdc(ppu) & LCDC_OBJ_ENABLE)){
+                            u32 offset = 2 * ((get_LY(ppu) + get_SCY(ppu)) % 8); 
+                            u16 address = 0x8000 + (ppu->tile_index * 16) + offset; // Sprites always use $8000 addressing mode.
+                            ppu->tile_low = read_memory_ppu(ppu, address);
+                        }
+                        else{
+                            ppu->tile_low = 0x00; // Transparent.
+                        }
+                        ppu->tile_fetch_state = TILE_FETCH_SPRITE_HIGH;
+                        break;
+                    }
+                    case TILE_FETCH_SPRITE_HIGH:{
+                        if((read_lcdc(ppu) & LCDC_OBJ_ENABLE)){
+                            u32 offset = 2 * ((get_LY(ppu) + get_SCY(ppu)) % 8); 
+                            u16 address = 0x8000 + (ppu->tile_index * 16) + offset + 1; // Sprites always use $8000 addressing mode.
+                            ppu->tile_high = read_memory_ppu(ppu, address);
+                        }
+                        else{
+                            ppu->tile_high = 0x00; // Transparent.
+                        }
+                        ppu->tile_fetch_state = TILE_FETCH_SPRITE_PUSH;
+                        break;
+                    }
+                    case TILE_FETCH_SPRITE_PUSH:{
+                        if(ppu->sprite.attributes & ATTRIBUTE_X_FLIP){
+                            for(int i = 7; i >= 0; i--){
+                                Pixel pixel;
+                                u8 color_low  = (ppu->tile_low  >> i) & 0x1;
+                                u8 color_high = (ppu->tile_high >> i) & 0x1; 
+                                pixel.color   = (color_high << 1) | color_low;
+                                pixel.bg_priority = (ppu->sprite.attributes & ATTRIBUTE_PRIORITY) >> 8;
+                                pixel.palette     = (ppu->sprite.attributes & ATTRIBUTE_PALETTE) >> 4;
+                                array_add(&ppu->sprite_mixing_fifo, pixel);
+                            }
+                        }
+                        else{
+                            for(int i = 0; i < 8; i++){
+                                Pixel pixel;
+                                u8 color_low  = (ppu->tile_low  >> i) & 0x1;
+                                u8 color_high = (ppu->tile_high >> i) & 0x1; 
+                                pixel.color   = (color_high << 1) | color_low;
+                                pixel.bg_priority = (ppu->sprite.attributes & ATTRIBUTE_PRIORITY) >> 8;
+                                pixel.palette     = (ppu->sprite.attributes & ATTRIBUTE_PALETTE) >> 4;
+                                array_add(&ppu->sprite_mixing_fifo, pixel);
+                            }
+
+                        }
+                        if(ppu->sprite_fifo.size == 0){
+                            array_copy(&ppu->sprite_fifo, &ppu->sprite_mixing_fifo);
+                        }
+                        else{
+                            for(int i = 0; i < ppu->sprite_fifo.size; i++){
+                                u8 current_color = array_get(&ppu->sprite_fifo, i).color;
+                                assert(current_color <= 3);
+                                if(current_color == 0){
+                                    Pixel pixel = array_get(&ppu->sprite_mixing_fifo, i);
+                                    array_set(&ppu->sprite_fifo, i, pixel);
+                                }
+                            }
+
+                        }
+                        // ppu->tile_fetch_state =  TILE_FETCH_TILE_INDEX;
+                        array_clear(&ppu->sprite_mixing_fifo);
+                        ppu->sprites_processed++; 
+                        // ppu->stop_fifos = false;
+
+                        if(ppu->sprites_processed < ppu->sprites_active.size){
+                            ppu->tile_fetch_state = TILE_FETCH_SPRITE_INDEX;    
+                                    
+                        }
+                        else if(ppu->sprites_processed == ppu->sprites_active.size){
+                            ppu->stop_fifos = false;
+                            ppu->tile_fetch_state = TILE_FETCH_TILE_INDEX;
+                            ppu->fetching_sprite = false;
+                            ppu->sprites_processed = 0;
+                            array_clear(&ppu->sprites_active);
+                        }
+                        
+                        break;
+                    }
                 }
 
+                check_if_sprite_is_in_current_position(ppu);
+                push_to_screen(ppu);
+                check_if_sprite_is_in_current_position(ppu);
+                push_to_screen(ppu);
 
                 ppu->cycles += 2;
                 if(ppu->pixel_count == 160){ 
@@ -310,6 +446,7 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                     ppu->memory->is_oam_locked  = false;
                     ppu->tile_x = 0;
                     ppu->pixel_count = 0;
+                    ppu->sprites_processed = 0;
                         
                     array_clear(&ppu->sprites); // Clear the list of sprites for the current scanline.
                     

@@ -23,9 +23,12 @@ Array<T> make_array(u32 size = DEFAULT_ARRAY_SIZE){
 	array.size     = 0;
 	array.element_size = sizeof(T);
 	array.data = (T*)malloc(array.capacity * sizeof(T));
+	memset(array.data, 0, array.capacity * sizeof(T));
 
     return array;
 }
+
+
 
 
 // Adds an element to the back of the array.
@@ -49,13 +52,31 @@ void array_add(Array<T> *array, T data) {
     
 }
 
+template<typename T>
+void array_set(Array<T> *array, u32 index, T data){
+	assert(array);
+	if(index < array->capacity){
+		array->data[index] = data;
+	}
+	else{
+		printf("Array: Trying to write to an index out of bounds");
+	}
+}
+
 // Get the last element of the array and reduce its size by one.
 template<typename T>
 T array_pop(Array<T> *array){
 	assert(array);
+	T value {};
+	if(array->size == 0){
+		printf("Cannot pop value from empty array, returned default value\n");
+		return value;
+	}
+		 
 	array->size--;
 	assert(array->size >= 0);
-	T value = array->data[array->size];
+	value = array->data[array->size];
+	array->data[array->size + 1] = T {};
 	return value;
 }
 
@@ -89,6 +110,7 @@ T array_get(Array<T> *array, u32 index){
 	}
 	printf("Indexing array out of bounds\n");
 	assert(false);
+	return T{};
 }
 
 template<typename T>

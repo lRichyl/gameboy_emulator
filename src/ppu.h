@@ -15,16 +15,12 @@ enum TileFetchState{
     TILE_FETCH_TILE_LOW,
     TILE_FETCH_TILE_HIGH,
     TILE_FETCH_PUSH_FIFO,
-    TILE_FETCH_DEFAULT
+    TILE_FETCH_DEFAULT,
+    TILE_FETCH_SPRITE_INDEX,
+    TILE_FETCH_SPRITE_LOW,
+    TILE_FETCH_SPRITE_HIGH,
+    TILE_FETCH_SPRITE_PUSH
 };
-
-enum SpriteFetchState{
-    SPRITE_FETCH_INDEX,
-    SPRITE_FETCH_LOW,
-    SPRITE_FETCH_HIGH,
-    SPRITE_FETCH_PUSH_FIFO,
-};
-
 
 enum LCDCBits{
     LCDC_BG_WIN_ENABLE   = 0x01,
@@ -44,6 +40,13 @@ enum LCDSTATBits{
     LCDSTAT_MODE_1   = 0x10,
     LCDSTAT_MODE_2   = 0x20,
     LCDSTAT_LYC_INT  = 0x40,
+};
+
+enum SpriteAttributes{
+    ATTRIBUTE_PALETTE  = 0x10,
+    ATTRIBUTE_X_FLIP   = 0x20,
+    ATTRIBUTE_Y_FLIP   = 0x40,
+    ATTRIBUTE_PRIORITY = 0x80
 };
 
 struct Sprite{
@@ -78,9 +81,9 @@ struct PPU{
 
     PPUMode mode;
     TileFetchState tile_fetch_state;
-    SpriteFetchState sprite_fetch_state;
     Memory *memory;
     Array<Sprite> sprites;
+    Array<Sprite> sprites_active;
     u32 cycles;
 
     Color colors[4];
@@ -99,8 +102,15 @@ struct PPU{
     bool frame_ready;
     bool stat_interrupt_set;
 
+    bool stop_fifos;
+    bool fetching_sprite;
+    bool check_sprites;
     Array<Pixel> bg_fifo;
     Array<Pixel> sprite_fifo;
+    Array<Pixel> sprite_mixing_fifo;
+
+    u8 sprites_processed;
+    Sprite sprite;
 };
 struct CPU;
 void init_ppu(PPU *ppu, Memory *memory, SDL_Renderer *renderer);
