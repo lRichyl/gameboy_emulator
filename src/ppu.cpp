@@ -82,8 +82,8 @@ void init_ppu(PPU *ppu, Memory *memory, SDL_Renderer *renderer){
     ppu->sprite_mixing_fifo = make_array<Pixel>(8);
 
     ppu->colors[0] = Color{255,255,255}; // White
-    ppu->colors[1] = Color{190,190,190}; // Light gray
-    ppu->colors[2] = Color{63,63,63};    // Dark gray
+    ppu->colors[1] = Color{0xAA,0xAA,0xAA}; // Light gray
+    ppu->colors[2] = Color{0x55,0x55,0x55};    // Dark gray
     ppu->colors[3] = Color{0,0,0};       // Black
 
     ppu->cycles = 0;
@@ -98,6 +98,18 @@ void init_ppu(PPU *ppu, Memory *memory, SDL_Renderer *renderer){
     set_stat_ppu_mode(ppu, 2);
 }
 
+static void sort_objects_by_x_position(Array<Sprite> *sprites){
+    for(int i = 0; i < sprites->size - 1; i++){
+        Sprite spr = array_get(sprites, i);
+        Sprite spr_next = array_get(sprites, i + 1);
+
+        if(spr.x_position > spr_next.x_position){
+            array_set(sprites, i, spr_next);
+            array_set(sprites, i + 1, spr);
+        }
+    }
+}
+
 static void check_if_sprite_is_in_current_position(PPU *ppu){
     if(ppu->check_sprites){
         for(int i = 0; i < ppu->sprites.size; i++){
@@ -109,7 +121,10 @@ static void check_if_sprite_is_in_current_position(PPU *ppu){
                 ppu->tile_fetch_state = TILE_FETCH_SPRITE_INDEX;
                 break;
             }
+
         }
+        if(ppu->sprites_active.size > 0)
+            sort_objects_by_x_position(&ppu->sprites_active);
         ppu->check_sprites = false;
     }
 }
@@ -132,6 +147,7 @@ static void push_to_screen(PPU *ppu){
         if(sp_pixel.color == 0 || (sp_pixel.bg_priority && bg_pixel.color != 0)){
 
             color = ppu->colors[bg_color_ids[bg_pixel.color]];
+            // color = {255,0,0};
         }
         else{
             u16 address;
@@ -146,6 +162,7 @@ static void push_to_screen(PPU *ppu){
     }
     else{
         color = ppu->colors[bg_color_ids[bg_pixel.color]];
+        // color = {255,0,0};
     }
 
     u8 previous_pixel_count = ppu->pixel_count;
@@ -230,7 +247,7 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                 if(read_lcdc(ppu) & LCDC_OBJ_SIZE){
                     sprite_height = 16;
                 }
-                if(sprite.x_position > 0 && (get_LY(ppu) + 16) >= sprite.y_position && (get_LY(ppu) + 16) < (sprite.y_position + sprite_height) && ppu->sprites.size < 10){
+                if((get_LY(ppu) + 16) >= sprite.y_position && (get_LY(ppu) + 16) < (sprite.y_position + sprite_height) && ppu->sprites.size < 10){
                     array_add(&ppu->sprites, sprite);
                 }
 
@@ -343,16 +360,44 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                     }
                     // SPRITE FETCHING
                     case TILE_FETCH_SPRITE_INDEX:{
-                        ppu->sprite = array_get(&ppu->sprites_active, ppu->sprites_processed);
-                        ppu->tile_index = ppu->sprite.tile_index;
-                        ppu->tile_fetch_state = TILE_FETCH_SPRITE_LOW;
+                        if((read_lcdc(ppu) & LCDC_OBJ_SIZE)){
+                            ppu->sprite = array_get(&ppu->sprites_active, ppu->sprites_processed);
+                            ppu->tile_index = ppu->sprite.tile_index;
+
+                            u8 LY = get_LY(ppu);
+                            if(LY < ppu->sprite.y_position - 8){
+                                ppu->tile_index &= ~(0x01);
+                                if((ppu->sprite.attributes & ATTRIBUTE_Y_FLIP))
+                                    ppu->tile_index |= (0x01);
+                            }
+                            else{
+                                ppu->tile_index |= (0x01);
+                                if((ppu->sprite.attributes & ATTRIBUTE_Y_FLIP))
+                                    ppu->tile_index &= ~(0x01);
+                            }
+
+                            ppu->tile_fetch_state = TILE_FETCH_SPRITE_LOW;
+                        }
+                        else{
+                            ppu->sprite = array_get(&ppu->sprites_active, ppu->sprites_processed);
+                            ppu->tile_index = ppu->sprite.tile_index;
+                            ppu->tile_fetch_state = TILE_FETCH_SPRITE_LOW;
+                        }
                         break;
                     }
                     case TILE_FETCH_SPRITE_LOW:{
                         if((read_lcdc(ppu) & LCDC_OBJ_ENABLE)){
-                            u32 offset = 2 * ((get_LY(ppu) + get_SCY(ppu)) % 8); 
-                            u16 address = 0x8000 + (ppu->tile_index * 16) + offset; // Sprites always use $8000 addressing mode.
-                            ppu->tile_low = read_memory_ppu(ppu, address);
+                            if((ppu->sprite.attributes & ATTRIBUTE_Y_FLIP)){
+                                
+                                u32 offset = 14 - (2 *((get_LY(ppu) + get_SCY(ppu)) % 8)); 
+                                u16 address = 0x8000 + (ppu->tile_index * 16) + offset; // Sprites always use $8000 addressing mode.
+                                ppu->tile_low = read_memory_ppu(ppu, address);
+                            }
+                            else{
+                                u32 offset = 2 * ((get_LY(ppu) + get_SCY(ppu)) % 8); 
+                                u16 address = 0x8000 + (ppu->tile_index * 16) + offset; // Sprites always use $8000 addressing mode.
+                                ppu->tile_low = read_memory_ppu(ppu, address);
+                            }
                         }
                         else{
                             ppu->tile_low = 0x00; // Transparent.
@@ -362,9 +407,16 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                     }
                     case TILE_FETCH_SPRITE_HIGH:{
                         if((read_lcdc(ppu) & LCDC_OBJ_ENABLE)){
-                            u32 offset = 2 * ((get_LY(ppu) + get_SCY(ppu)) % 8); 
-                            u16 address = 0x8000 + (ppu->tile_index * 16) + offset + 1; // Sprites always use $8000 addressing mode.
-                            ppu->tile_high = read_memory_ppu(ppu, address);
+                            if((ppu->sprite.attributes & ATTRIBUTE_Y_FLIP)){
+                                u32 offset = 14 - (2 *((get_LY(ppu) + get_SCY(ppu)) % 8)); 
+                                u16 address = 0x8000 + (ppu->tile_index * 16) + offset + 1; // Sprites always use $8000 addressing mode.
+                                ppu->tile_high = read_memory_ppu(ppu, address);
+                            }
+                            else{
+                                u32 offset = 2 * ((get_LY(ppu) + get_SCY(ppu)) % 8); 
+                                u16 address = 0x8000 + (ppu->tile_index * 16) + offset + 1; // Sprites always use $8000 addressing mode.
+                                ppu->tile_high = read_memory_ppu(ppu, address);
+                            }
                         }
                         else{
                             ppu->tile_high = 0x00; // Transparent.
