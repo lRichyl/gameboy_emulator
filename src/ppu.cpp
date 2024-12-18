@@ -74,7 +74,7 @@ void init_ppu(PPU *ppu, Memory *memory, SDL_Renderer *renderer){
     ppu->mode = MODE_OAM_SCAN;
     ppu->tile_fetch_state = TILE_FETCH_TILE_INDEX;
     ppu->sprites_processed = 0;
-    ppu->sprites        = make_array<Sprite>(10);
+    ppu->sprites        = make_array<Sprite>(40);
     ppu->sprites_active = make_array<Sprite>(10);
 
     ppu->bg_fifo     = make_array<Pixel>(8);
@@ -99,6 +99,7 @@ void init_ppu(PPU *ppu, Memory *memory, SDL_Renderer *renderer){
 }
 
 static void sort_objects_by_x_position(Array<Sprite> *sprites){
+    if(sprites->size <= 1) return;
     for(int i = 0; i < sprites->size - 1; i++){
         Sprite spr = array_get(sprites, i);
         Sprite spr_next = array_get(sprites, i + 1);
@@ -114,6 +115,7 @@ static void check_if_sprite_is_in_current_position(PPU *ppu){
     if(ppu->check_sprites){
         for(int i = 0; i < ppu->sprites.size; i++){
             Sprite sprite = array_get(&ppu->sprites, i);
+            // if (sprite.x_position < 8) continue;
             if(sprite.x_position - 8 == ppu->pixel_count){
                 array_add(&ppu->sprites_active, sprite);
 
@@ -121,10 +123,8 @@ static void check_if_sprite_is_in_current_position(PPU *ppu){
                 ppu->tile_fetch_state = TILE_FETCH_SPRITE_INDEX;
                 break;
             }
-
+            if(i == ppu->sprites_active.capacity - 1) break;
         }
-        if(ppu->sprites_active.size > 0)
-            sort_objects_by_x_position(&ppu->sprites_active);
         ppu->check_sprites = false;
     }
 }
@@ -246,7 +246,7 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                 if(read_lcdc(ppu) & LCDC_OBJ_SIZE){
                     sprite_height = 16;
                 }
-                if((get_LY(ppu) + 16) >= sprite.y_position && (get_LY(ppu) + 16) < (sprite.y_position + sprite_height) && ppu->sprites.size < 10){
+                if(sprite.x_position > 0 && (get_LY(ppu) + 16) >= sprite.y_position && (get_LY(ppu) + 16) < (sprite.y_position + sprite_height) && ppu->sprites.size < 40){
                     array_add(&ppu->sprites, sprite);
                 }
                
@@ -258,6 +258,7 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                 if(ppu->cycles == 80){
                     ppu->mode = MODE_DRAW;
                     ppu->current_oam_address = ppu->oam_initial_address;
+                    sort_objects_by_x_position(&ppu->sprites);
                 }
                 break;
             }

@@ -2566,6 +2566,9 @@ void update_timers(CPU *cpu){
 
 void handle_DMA_transfer(CPU *cpu){
     if(cpu->DMA_transfer_in_progress){
+
+        // 4 bytes are transferred at a time because the emulator timestep is 4 machine cycles and
+        // DMA transfers 1 byte per machine cycle.
         u16 source = cpu->DMA_source + cpu->transferred_bytes;
         u8 byte0 = read_memory_cpu(cpu, source);
         u8 byte1 = read_memory_cpu(cpu, source + 1);
@@ -2580,8 +2583,8 @@ void handle_DMA_transfer(CPU *cpu){
 
         cpu->transferred_bytes += 4;
 
-        // 40 is the size of the OAM table, DMA transfer always copies the entire table.
-        if(cpu->transferred_bytes == 40){
+        // 160 is the size of the OAM table, DMA transfer always copies the entire table.
+        if(cpu->transferred_bytes == 160){
             cpu->DMA_transfer_in_progress = false;
             cpu->transferred_bytes = 0;
         } 
