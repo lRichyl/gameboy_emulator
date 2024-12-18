@@ -165,7 +165,6 @@ static void push_to_screen(PPU *ppu){
         // color = {255,0,0};
     }
 
-    u8 previous_pixel_count = ppu->pixel_count;
     if(!ppu->skip_fifo){
         ppu->pixel_count++;
         ppu->buffer[ppu->current_pos] = color.r;
@@ -250,6 +249,7 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                 if((get_LY(ppu) + 16) >= sprite.y_position && (get_LY(ppu) + 16) < (sprite.y_position + sprite_height) && ppu->sprites.size < 10){
                     array_add(&ppu->sprites, sprite);
                 }
+               
 
                 ppu->current_oam_address += ppu->oam_offset;
                 ppu->cycles += 2;
@@ -431,8 +431,8 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                                 u8 color_low  = (ppu->tile_low  >> i) & 0x1;
                                 u8 color_high = (ppu->tile_high >> i) & 0x1; 
                                 pixel.color   = (color_high << 1) | color_low;
-                                pixel.bg_priority = (ppu->sprite.attributes & ATTRIBUTE_PRIORITY) >> 8;
-                                pixel.palette     = (ppu->sprite.attributes & ATTRIBUTE_PALETTE) >> 4;
+                                pixel.bg_priority = (ppu->sprite.attributes & ATTRIBUTE_PRIORITY) >> 7;
+                                pixel.palette     = (ppu->sprite.attributes & ATTRIBUTE_PALETTE) >> 3;
                                 array_add(&ppu->sprite_mixing_fifo, pixel);
                             }
                         }
@@ -442,30 +442,32 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                                 u8 color_low  = (ppu->tile_low  >> i) & 0x1;
                                 u8 color_high = (ppu->tile_high >> i) & 0x1; 
                                 pixel.color   = (color_high << 1) | color_low;
-                                pixel.bg_priority = (ppu->sprite.attributes & ATTRIBUTE_PRIORITY) >> 8;
-                                pixel.palette     = (ppu->sprite.attributes & ATTRIBUTE_PALETTE) >> 4;
+                                pixel.bg_priority = (ppu->sprite.attributes & ATTRIBUTE_PRIORITY) >> 7;
+                                pixel.palette     = (ppu->sprite.attributes & ATTRIBUTE_PALETTE) >> 3;
                                 array_add(&ppu->sprite_mixing_fifo, pixel);
                             }
 
                         }
+                        // The first time an object is present in the scanline the fifo is fully populated.
                         if(ppu->sprite_fifo.size == 0){
                             array_copy(&ppu->sprite_fifo, &ppu->sprite_mixing_fifo);
                         }
                         else{
+                            // When there is already pixel data in the pixel fifo we mix them.
+                            ppu->sprite_fifo.size = 8; // Bad
                             for(int i = 0; i < ppu->sprite_fifo.size; i++){
                                 u8 current_color = array_get(&ppu->sprite_fifo, i).color;
                                 assert(current_color <= 3);
+                                Pixel pixel = array_get(&ppu->sprite_mixing_fifo, i);
                                 if(current_color == 0){
-                                    Pixel pixel = array_get(&ppu->sprite_mixing_fifo, i);
                                     array_set(&ppu->sprite_fifo, i, pixel);
                                 }
+                                
                             }
 
                         }
-                        // ppu->tile_fetch_state =  TILE_FETCH_TILE_INDEX;
                         array_clear(&ppu->sprite_mixing_fifo);
                         ppu->sprites_processed++; 
-                        // ppu->stop_fifos = false;
 
                         if(ppu->sprites_processed < ppu->sprites_active.size){
                             ppu->tile_fetch_state = TILE_FETCH_SPRITE_INDEX;    

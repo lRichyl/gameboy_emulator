@@ -2567,12 +2567,18 @@ void update_timers(CPU *cpu){
 void handle_DMA_transfer(CPU *cpu){
     if(cpu->DMA_transfer_in_progress){
         u16 source = cpu->DMA_source + cpu->transferred_bytes;
-        u8 byte = read_memory_cpu(cpu, source);
+        u8 byte0 = read_memory_cpu(cpu, source);
+        u8 byte1 = read_memory_cpu(cpu, source + 1);
+        u8 byte2 = read_memory_cpu(cpu, source + 2);
+        u8 byte3 = read_memory_cpu(cpu, source + 3);
         
-        u16 destination = 0xFF00 + cpu->transferred_bytes;
-        write_memory_cpu(cpu, destination, byte);
+        u16 destination = 0xFE00 + cpu->transferred_bytes;
+        write_memory_cpu(cpu, destination, byte0);
+        write_memory_cpu(cpu, destination + 1, byte1);
+        write_memory_cpu(cpu, destination + 2, byte2);
+        write_memory_cpu(cpu, destination + 3, byte3);
 
-        cpu->transferred_bytes++;
+        cpu->transferred_bytes += 4;
 
         // 40 is the size of the OAM table, DMA transfer always copies the entire table.
         if(cpu->transferred_bytes == 40){
