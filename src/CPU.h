@@ -94,6 +94,7 @@ struct CPU{
     bool handling_interrupt;
     bool halt;
     bool fetched_next_instruction;
+    bool was_extended;
     Interrupt interrupt;
     
     bool DMA_transfer_in_progress;

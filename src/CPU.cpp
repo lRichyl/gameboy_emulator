@@ -32,7 +32,7 @@ void init_cpu(CPU *cpu, Memory *memory){
     cpu->handling_interrupt = false;
     cpu->fetched_next_instruction = false;
 
-    cpu->PC = 0x000; // Temporary
+    cpu->PC = 0x0100; // Temporary
     cpu->internal_counter = 0xABCC;
 
     cpu->wide_register_map[0] = &cpu->BC;
@@ -219,6 +219,7 @@ static void go_to_next_instruction(CPU *cpu){
         cpu->scheduled_ei = false;
     }
 
+    assert(cpu->PC != 0x38);
     cpu->opcode = fetch(cpu);
     cpu->machine_cycle = 0; 
     cpu->fetched_next_instruction = true;
@@ -1387,6 +1388,7 @@ i32 run_cpu(CPU *cpu){
                     }
                     else if(cpu->machine_cycle == 4){
                         go_to_next_instruction(cpu);
+                        cpu->is_extended = cpu->was_extended;
                     }
 
                     return 4;
@@ -2446,6 +2448,8 @@ void handle_interrupts(CPU *cpu, PPU *ppu){
                 case INT_SERIAL:{address = 0x58; break;}
                 case INT_JOYPAD:{address = 0x60; break;}
             }
+            cpu->was_extended = cpu->is_extended;
+            cpu->is_extended = false;
             cpu->PC = address;
             go_to_next_instruction(cpu);
             cycle = 0;

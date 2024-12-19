@@ -116,12 +116,14 @@ static void check_if_sprite_is_in_current_position(PPU *ppu){
         for(int i = 0; i < ppu->sprites.size; i++){
             Sprite sprite = array_get(&ppu->sprites, i);
             // if (sprite.x_position < 8) continue;
-            if(sprite.x_position - 8 == ppu->pixel_count){
-                array_add(&ppu->sprites_active, sprite);
+            if(ppu->pixel_count > 7){
+                if(sprite.x_position - 8 == ppu->pixel_count){
+                    array_add(&ppu->sprites_active, sprite);
 
-                ppu->stop_fifos = true;
-                ppu->tile_fetch_state = TILE_FETCH_SPRITE_INDEX;
-                break;
+                    ppu->stop_fifos = true;
+                    ppu->tile_fetch_state = TILE_FETCH_SPRITE_INDEX;
+                    break;
+                }
             }
             if(i == ppu->sprites_active.capacity - 1) break;
         }

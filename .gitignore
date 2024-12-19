@@ -1,3 +1,6 @@
 build/
 gameboy.exe
 .vscode/c_cpp_properties.json
+Legend of Zelda.gb
+*.gb
+*.sav
