@@ -126,7 +126,7 @@ static void check_if_sprite_is_in_current_position(PPU *ppu){
                     break;
                 }
             }
-            else if((i32)sprite_x_corrected < 0 && (i32)sprite_x_corrected >= -7){
+            else if(sprite_x_corrected < 0 && sprite_x_corrected >= -7){
                 if(sprite_x_corrected == (i32)(ppu->pixel_count - (8 - sprite.x_position))){
                     array_add(&ppu->sprites_active, sprite);
 
@@ -141,6 +141,7 @@ static void check_if_sprite_is_in_current_position(PPU *ppu){
 }
 
 static void push_to_screen(PPU *ppu){
+    // TODO: Here we should return when scrolling.
 
     if(ppu->bg_fifo.size == 0) return;
     if(ppu->stop_fifos) return;
@@ -151,7 +152,6 @@ static void push_to_screen(PPU *ppu){
     u8 palette = read_memory_ppu(ppu, bg_palette_address);
     u8 bg_color_ids[4] = {(palette & 0x3), ((palette & 0xC) >> 2), ((palette & 0x30) >> 4), ((palette & 0xC0) >> 6)};
 
-    // TODO: Here we should return when scrolling.
     Color color;
     if(ppu->sprite_fifo.size > 0 && (!ppu->skip_fifo)){
         Pixel sp_pixel = array_pop(&ppu->sprite_fifo);
@@ -219,14 +219,17 @@ void unset_LYC_LY(PPU *ppu){
     write_memory_ppu(ppu, 0xFF41, stat);
 }
 
+u32 count = 0;
 void ppu_tick(PPU *ppu, CPU *cpu){
     static bool once = false;
     if(read_lcdc(ppu) & LCDC_LCD_PPU_ENABLE){
+
         if(get_LY(ppu) == get_LYC(ppu)){
             set_LYC_LY(ppu);
             if(ppu->cycles == 0x04){
                 if(get_LY(ppu) == get_LYC(ppu)){
-                    if(read_memory_ppu(ppu, 0xFF41) & LCDSTAT_LYC_INT){
+                    if(read_memory_ppu(ppu, 0xFF41) & LCDSTAT_LYC_INT && !ppu->stat_interrupt_set){
+                        ppu->stat_interrupt_set = true;
                         set_interrupt(cpu, INT_LCD);
                     }
                 }
@@ -236,15 +239,28 @@ void ppu_tick(PPU *ppu, CPU *cpu){
             unset_LYC_LY(ppu);
         }
         if(get_LY(ppu) == 0) unset_LYC_LY(ppu);
+        
+        if(get_LY(ppu) == 0) unset_LYC_LY(ppu);
         switch(ppu->mode){
             case MODE_OAM_SCAN:{
-                
+                // if(ppu->cycles >= 0x04){
+                //     if(get_LY(ppu) == get_LYC(ppu)){
+                //         set_LYC_LY(ppu);
+                //         if(read_memory_ppu(ppu, 0xFF41) & LCDSTAT_LYC_INT){
+                //             ppu->stat_interrupt_set = true;
+                //             set_interrupt(cpu, INT_LCD);
+                //         }
+                //     }
+                //     else{
+                //         unset_LYC_LY(ppu);
+                //     }
+                // }
 
                 set_stat_ppu_mode(ppu, 2);
-                if((read_memory_ppu(ppu, 0xFF41) & LCDSTAT_MODE_2)  && !ppu->stat_interrupt_set){
-                    ppu->stat_interrupt_set = true;
-                    set_interrupt(cpu, INT_LCD);
-                }
+                 if((read_memory_ppu(ppu, 0xFF41) & LCDSTAT_MODE_2)  && !ppu->stat_interrupt_set){
+                     ppu->stat_interrupt_set = true;
+                     set_interrupt(cpu, INT_LCD);
+                 }
                 ppu->memory->is_oam_locked = true;
                 
                 Sprite sprite;
@@ -263,6 +279,7 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                
 
                 ppu->current_oam_address += ppu->oam_offset;
+                count += 2;
                 ppu->cycles += 2;
                 // printf("Cycles %d\n", ppu->cycles);
                 assert(ppu->cycles <= 80);
@@ -400,13 +417,26 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                     case TILE_FETCH_SPRITE_LOW:{
                         if((read_lcdc(ppu) & LCDC_OBJ_ENABLE)){
                             if((ppu->sprite.attributes & ATTRIBUTE_Y_FLIP)){
+                                u32 offset; 
+                                if(ppu->sprite.y_position % 8){
+                                    offset = 14 - (2 * (16 - (ppu->sprite.y_position - (get_LY(ppu) + get_SCY(ppu))))); 
+                                }
+                                else{
+                                    offset = 14 - (2 * ((get_LY(ppu) + get_SCY(ppu)) % 8)); 
+                                }
                                 
-                                u32 offset = 14 - (2 *((get_LY(ppu) + get_SCY(ppu)) % 8)); 
                                 u16 address = 0x8000 + (ppu->tile_index * 16) + offset; // Sprites always use $8000 addressing mode.
                                 ppu->tile_low = read_memory_ppu(ppu, address);
                             }
                             else{
-                                u32 offset = 2 * ((get_LY(ppu) + get_SCY(ppu)) % 8); 
+                                u32 offset;
+                                if(ppu->sprite.y_position % 8){
+                                    offset = 2 * (16 - (ppu->sprite.y_position - (get_LY(ppu) + get_SCY(ppu)))); 
+                                }
+                                else{
+                                    offset = 2 * ((get_LY(ppu) + get_SCY(ppu)) % 8); 
+                                }
+                                
                                 u16 address = 0x8000 + (ppu->tile_index * 16) + offset; // Sprites always use $8000 addressing mode.
                                 ppu->tile_low = read_memory_ppu(ppu, address);
                             }
@@ -420,12 +450,26 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                     case TILE_FETCH_SPRITE_HIGH:{
                         if((read_lcdc(ppu) & LCDC_OBJ_ENABLE)){
                             if((ppu->sprite.attributes & ATTRIBUTE_Y_FLIP)){
-                                u32 offset = 14 - (2 *((get_LY(ppu) + get_SCY(ppu)) % 8)); 
+                                u32 offset; 
+                                if(ppu->sprite.y_position % 8){
+                                    offset = 14 - (2 * (16 - (ppu->sprite.y_position - (get_LY(ppu) + get_SCY(ppu))))); 
+                                }
+                                else{
+                                    offset = 14 - (2 * ((get_LY(ppu) + get_SCY(ppu)) % 8)); 
+                                }
+                               
+                               
                                 u16 address = 0x8000 + (ppu->tile_index * 16) + offset + 1; // Sprites always use $8000 addressing mode.
                                 ppu->tile_high = read_memory_ppu(ppu, address);
                             }
                             else{
-                                u32 offset = 2 * ((get_LY(ppu) + get_SCY(ppu)) % 8); 
+                                u32 offset;
+                                if(ppu->sprite.y_position % 8){
+                                    offset = 2 * (16 - (ppu->sprite.y_position - (get_LY(ppu) + get_SCY(ppu)))); 
+                                }
+                                else{
+                                    offset = 2 * ((get_LY(ppu) + get_SCY(ppu)) % 8); 
+                                }
                                 u16 address = 0x8000 + (ppu->tile_index * 16) + offset + 1; // Sprites always use $8000 addressing mode.
                                 ppu->tile_high = read_memory_ppu(ppu, address);
                             }
@@ -532,6 +576,7 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                 
 
                 ppu->cycles += 2;
+                count += 2;
                 if(ppu->pixel_count == 160){ 
                     array_clear(&ppu->bg_fifo);
                     array_clear(&ppu->sprite_fifo);
@@ -546,25 +591,28 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                         
                     array_clear(&ppu->sprites); // Clear the list of sprites for the current scanline.
                     
+                    
+                    // unset_interrupt(cpu, INT_LCD);
+                    ppu->stat_interrupt_set = false;
                 }
                 break;
             }
             case MODE_HBLANK:{
                 set_stat_ppu_mode(ppu, 0);
-                if((read_memory_ppu(ppu, 0xFF41) & LCDSTAT_MODE_0) && !ppu->stat_interrupt_set){
-                    ppu->stat_interrupt_set = true;
-                    set_interrupt(cpu, INT_LCD);
-                }
-
+                 if((read_memory_ppu(ppu, 0xFF41) & LCDSTAT_MODE_0) && !ppu->stat_interrupt_set){
+                     ppu->stat_interrupt_set = true;
+                     set_interrupt(cpu, INT_LCD);
+                 }
+                count += 2;
                 ppu->cycles += 2;
                 if(ppu->cycles == 456){
-                    if(get_LY(ppu) < 143){
+                    increase_LY(ppu);
+                    if(get_LY(ppu) < 144){
                         ppu->mode = MODE_OAM_SCAN;
                     }
-                    else if(get_LY(ppu) == 143){
+                    else if(get_LY(ppu) == 144){
                         ppu->mode = MODE_VBLANK;
                     }
-                    increase_LY(ppu);
 
                     ppu->do_dummy_fetch = true;
                     ppu->cycles = 0;
@@ -574,11 +622,11 @@ void ppu_tick(PPU *ppu, CPU *cpu){
             case MODE_VBLANK:{
                 set_stat_ppu_mode(ppu, 1);
 
-                if((read_memory_ppu(ppu, 0xFF41) & LCDSTAT_MODE_1)  && !ppu->stat_interrupt_set){
-                    ppu->stat_interrupt_set = true;
-                    set_interrupt(cpu, INT_LCD);
-                }
-
+                 if((read_memory_ppu(ppu, 0xFF41) & LCDSTAT_MODE_1)  && !ppu->stat_interrupt_set){
+                     ppu->stat_interrupt_set = true;
+                     set_interrupt(cpu, INT_LCD);
+                 }
+                count += 2;
                 ppu->cycles += 2;
                 if(ppu->cycles == 4)
                     set_interrupt(cpu, INT_VBLANK); 
@@ -589,11 +637,12 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                         ppu->current_pos = 0;
                         ppu_render(ppu);
                         ppu->frame_ready = true;
+                        count = 0;
                     }
                     else{
                         increase_LY(ppu);
-                        
                     }
+                      
                     ppu->cycles = 0;
                 }
                 break;

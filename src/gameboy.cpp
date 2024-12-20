@@ -13,6 +13,7 @@ void run_gameboy(Gameboy *gmb, LARGE_INTEGER starting_time, i64 perf_count_frequ
     PPU *ppu = &gmb->ppu;
     while(!ppu->frame_ready){
         // Handling interrupts
+        update_timers(cpu);
         if(cpu->fetched_next_instruction){
             handle_interrupts(cpu, ppu);
         }
@@ -24,7 +25,6 @@ void run_gameboy(Gameboy *gmb, LARGE_INTEGER starting_time, i64 perf_count_frequ
 
         handle_DMA_transfer(cpu);
         
-        update_timers(cpu);
        
         ppu_tick(ppu, cpu);
         ppu_tick(ppu, cpu);

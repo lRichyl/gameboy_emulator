@@ -54,6 +54,12 @@ void init_cpu(CPU *cpu, Memory *memory){
     cpu->DE = 0x00D8;
     cpu->HL = 0x014D;
     cpu->SP = 0xFFFE;
+
+    fopen_s(&cpu->fp, "Log" , "w" );
+	if( !cpu->fp ){
+		printf("File could not be opened\n" );
+        assert(false)
+	}
 }
 
 static u8 read_memory_cpu(CPU *cpu, u16 address){
@@ -198,17 +204,19 @@ static void print_cpu(CPU *cpu){
     u8 DIV      = read_memory_cpu(cpu, 0xFF04);
     u8 LCDC     = read_memory_cpu(cpu, 0xFF40);
     u8 LY       = read_memory_cpu(cpu, 0xFF44);
+    u8 LYC      = read_memory_cpu(cpu, 0xFF45);
     u8 STAT     = read_memory_cpu(cpu, 0xFF41);
 
-    printf("PC: \t%X\n", cpu->PC);
-    printf("IME: \t%d\n", cpu->IME);
-    printf("Opcode: \t%X\n", cpu->opcode);
-    printf("Cycles: \t%d\n", cpu->cycles_delta);
-    printf("DIV: \t%X  Internal counter: %X\n", DIV, cpu->internal_counter);
-    printf("LCDC: \t%X\n", LCDC);
-    printf("LY: \t%X\n", LY);
-    printf("STAT: \t%X\n", STAT);
-    printf("A: %X\tBC: %X\tDE: %X\tHL: %X\tSP: %X\tZ%X\tH%X\tN%X\tC%X\t\n\n", cpu->A, cpu->BC, cpu->DE, cpu->HL, cpu->SP, zero, half, sub, carry);
+    fprintf(cpu->fp,"PC: \t%X\n", cpu->PC);
+    fprintf(cpu->fp,"IME: \t%d\n", cpu->IME);
+    fprintf(cpu->fp,"Opcode: \t%X\n", cpu->opcode);
+    fprintf(cpu->fp,"Cycles: \t%d\n", cpu->cycles_delta);
+    fprintf(cpu->fp,"DIV: \t%X  Internal counter: %X\n", DIV, cpu->internal_counter);
+    fprintf(cpu->fp,"LCDC: \t%X\n", LCDC);
+    fprintf(cpu->fp,"LY: \t%X\n", LY);
+    fprintf(cpu->fp,"LYC: \t%X\n", LYC);
+    fprintf(cpu->fp,"STAT: \t%X\n", STAT);
+    fprintf(cpu->fp,"A: %X\tBC: %X\tDE: %X\tHL: %X\tSP: %X\tZ%X\tH%X\tN%X\tC%X\t\n\n", cpu->A, cpu->BC, cpu->DE, cpu->HL, cpu->SP, zero, half, sub, carry);
 }
 
 
@@ -219,7 +227,7 @@ static void go_to_next_instruction(CPU *cpu){
         cpu->scheduled_ei = false;
     }
 
-    assert(cpu->PC != 0x38);
+    //assert(cpu->PC != 0x904);
     cpu->opcode = fetch(cpu);
     cpu->machine_cycle = 0; 
     cpu->fetched_next_instruction = true;
@@ -2547,8 +2555,8 @@ static void increment_tima(CPU *cpu){
 }
 
 void update_timers(CPU *cpu){
-    write_memory_cpu(cpu, 0xFF04, (cpu->internal_counter & 0xFF00) >> 8);
     cpu->internal_counter += 4;
+    cpu->memory->data[0xFF04] = (cpu->internal_counter & 0xFF00) >> 8;
 
     u8 TAC = read_memory_cpu(cpu, 0xFF07);
     if(TAC & 0x04){

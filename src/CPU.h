@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include <stdio.h>
 #include "memory.h"
 
 const i32 NUM_REGISTERS = 8;
@@ -100,6 +101,8 @@ struct CPU{
     bool DMA_transfer_in_progress;
     u8 transferred_bytes;
     u16 DMA_source;
+
+    FILE *fp;
 };
 
 struct PPU;
