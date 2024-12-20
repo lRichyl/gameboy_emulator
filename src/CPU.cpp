@@ -243,13 +243,13 @@ static u8 mem_value;
 static bool sign;
 
 
-i32 run_cpu(CPU *cpu){
+void run_cpu(CPU *cpu){
     if(cpu->fetched_next_instruction) cpu->fetched_next_instruction = false;
     if(cpu->do_first_fetch){
         cpu->machine_cycle = 0;
         cpu->opcode = fetch(cpu);
         cpu->do_first_fetch = false;
-        return 4;
+        // return 4;
     }
     cpu->machine_cycle++;
     if(!cpu->is_extended){
@@ -259,7 +259,7 @@ i32 run_cpu(CPU *cpu){
                 case 0x00:{  // NOP
                     go_to_next_instruction(cpu);
 
-                    return 4;
+                    break;
                 }
 
                 case 0x01:
@@ -285,7 +285,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0x02:
@@ -301,7 +301,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
 
@@ -315,7 +315,7 @@ i32 run_cpu(CPU *cpu){
                     else if(cpu->machine_cycle == 2){
                         go_to_next_instruction(cpu);
                     }
-                    return 4;
+                    break;
                 }
 
                 case 0x32:{ // LD [HL-], A
@@ -327,7 +327,7 @@ i32 run_cpu(CPU *cpu){
                     else if(cpu->machine_cycle == 2){
                         go_to_next_instruction(cpu);
                     }
-                    return 4;
+                    break;
                 }
 
                 case 0x0A:
@@ -345,7 +345,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0x2A:{ // LD A, [HL+]
@@ -359,7 +359,7 @@ i32 run_cpu(CPU *cpu){
 
                         go_to_next_instruction(cpu);
                     }
-                    return 4;
+                    break;
                 }
 
                 case 0x3A:{  // LD A, [HL+]
@@ -373,7 +373,7 @@ i32 run_cpu(CPU *cpu){
 
                         go_to_next_instruction(cpu);
                     }
-                    return 4;
+                    break;
                 }
 
                 case 0x08:{ // LD [a16], SP
@@ -396,7 +396,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0x03:
@@ -413,7 +413,7 @@ i32 run_cpu(CPU *cpu){
                     else if(cpu->machine_cycle == 2){
                         go_to_next_instruction(cpu);
                     }
-                    return 4;
+                    break;
                 }
 
                 case 0x33:{ // INC SP
@@ -424,7 +424,7 @@ i32 run_cpu(CPU *cpu){
                     else if(cpu->machine_cycle == 2){
                         go_to_next_instruction(cpu);
                     }
-                    return 4;
+                    break;
                 }
 
                 case 0x0B:
@@ -441,7 +441,7 @@ i32 run_cpu(CPU *cpu){
                     else if(cpu->machine_cycle == 2){
                         go_to_next_instruction(cpu);
                     }
-                    return 4;
+                    break;
                 }
 
                 case 0x3B:{ // DEC SP
@@ -452,7 +452,7 @@ i32 run_cpu(CPU *cpu){
                     else if(cpu->machine_cycle == 2){
                         go_to_next_instruction(cpu);
                     }
-                    return 4;
+                    break;
                 }
 
                 case 0x09:
@@ -476,7 +476,7 @@ i32 run_cpu(CPU *cpu){
 
                         go_to_next_instruction(cpu);
                     }
-                    return 4;
+                    break;
                 }
 
                 case 0x39:{ // ADD HL, SP
@@ -492,7 +492,7 @@ i32 run_cpu(CPU *cpu){
 
                         go_to_next_instruction(cpu);
                     }
-                    return 4;
+                    break;
                 }
 
                 case 0x04:
@@ -514,7 +514,7 @@ i32 run_cpu(CPU *cpu){
 
                     go_to_next_instruction(cpu);
 
-                    return 4;
+                    break;
                 }
                 
                 case 0x34:{ // INC [HL]
@@ -530,7 +530,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0x05:
@@ -552,7 +552,7 @@ i32 run_cpu(CPU *cpu){
 
                     go_to_next_instruction(cpu);
 
-                    return 4;
+                    break;
                 }
 
                 case 0x35:{ // DEC [HL]
@@ -568,7 +568,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0x06:
@@ -598,7 +598,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0x36:{ // LD [HL], imm8
@@ -613,7 +613,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0x07:{ // RLCA
@@ -627,7 +627,7 @@ i32 run_cpu(CPU *cpu){
                     unset_flag(cpu, FLAG_HALFCARRY);
 
                     go_to_next_instruction(cpu);
-                    return 4;
+                    break;
                 }
 
                 case 0x0F:{ // RRCA
@@ -642,7 +642,7 @@ i32 run_cpu(CPU *cpu){
 
                     go_to_next_instruction(cpu);
 
-                    return 4;
+                    break;
                 }
 
                 case 0x17:{ // RLA
@@ -659,7 +659,7 @@ i32 run_cpu(CPU *cpu){
 
                     go_to_next_instruction(cpu);
 
-                    return 4;
+                    break;
                 }
 
                 case 0x1F:{ // RRA
@@ -676,7 +676,7 @@ i32 run_cpu(CPU *cpu){
 
                     go_to_next_instruction(cpu);
 
-                    return 4;
+                    break;
                 }
 
                 case 0x27:{ // DAA
@@ -701,7 +701,7 @@ i32 run_cpu(CPU *cpu){
 
                     go_to_next_instruction(cpu);
 
-                    return 4;
+                    break;
                 }
 
                 case 0x2F:{ // CPL
@@ -712,7 +712,7 @@ i32 run_cpu(CPU *cpu){
 
                     go_to_next_instruction(cpu);
 
-                    return 4;
+                    break;
                 }
 
                 case 0x37:{ // SCF
@@ -722,7 +722,7 @@ i32 run_cpu(CPU *cpu){
                     unset_flag(cpu, FLAG_SUB);
 
                     go_to_next_instruction(cpu);
-                    return 4;
+                    break;
                 }
 
                 case 0x3F:{ // CCF
@@ -733,7 +733,7 @@ i32 run_cpu(CPU *cpu){
 
                     go_to_next_instruction(cpu);
 
-                    return 4;
+                    break;
                 }
 
                 case 0x18:{ // JR imm8
@@ -763,7 +763,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0x20:{ // JR NZ, imm8
@@ -785,7 +785,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0x30:{ // JR NC, imm8
@@ -807,7 +807,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0x28:{ // JR Z, imm8
@@ -829,7 +829,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0x38:{ // JR C, imm8
@@ -851,7 +851,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 // TODO
@@ -860,14 +860,14 @@ i32 run_cpu(CPU *cpu){
 
                 //     cpu->opcode = fetch(cpu);
                 //     cpu->machine_cycle = 0;
-                //     return 4;
+                //     break;
                 // }
 
                 default:{
                     printf("Opcode %X not implemented\n", cpu->opcode);
                     print_cpu(cpu);
                     assert(false);
-                    return 4;
+                    break;
                 }
 
                 
@@ -908,7 +908,7 @@ i32 run_cpu(CPU *cpu){
 
                 go_to_next_instruction(cpu);
             }
-            return 4;
+            break;
         }
 
         case 0x80:{
@@ -933,7 +933,7 @@ i32 run_cpu(CPU *cpu){
                         
                         go_to_next_instruction(cpu);
                     }
-                    return 4;
+                    break;
                 }
 
                 case 0x08:{ // ADC A, r
@@ -960,7 +960,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0x10:{ // SUB A, r
@@ -983,7 +983,7 @@ i32 run_cpu(CPU *cpu){
                         
                         go_to_next_instruction(cpu);
                     }
-                    return 4;
+                    break;
                 }
 
                 case 0x18:{ // SBC A, r
@@ -1010,7 +1010,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0x20:{ // AND A, r
@@ -1045,7 +1045,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0x28:{ // XOR A, r
@@ -1080,7 +1080,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0x30:{ // OR A, r
@@ -1115,7 +1115,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0x38:{ // CP A, r
@@ -1139,14 +1139,14 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 default:{
                     printf("Opcode %X not implemented\n", cpu->opcode);
                     print_cpu(cpu);
                     assert(false);
-                    return 4;
+                    break;
                 }
             }
 
@@ -1164,7 +1164,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0xCE:{ // ADC A, imm8
@@ -1177,7 +1177,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0xD6:{ // SUB A, imm8
@@ -1189,7 +1189,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0xDE:{ // SBC A, imm8
@@ -1202,7 +1202,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0xE6:{ // AND A, imm8
@@ -1220,7 +1220,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0xEE:{ // XOR A, imm8
@@ -1238,7 +1238,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0xF6:{ // OR A, imm8
@@ -1256,7 +1256,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0xFE:{ // CP A, imm8
@@ -1269,7 +1269,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0xC0:{ // RET NZ
@@ -1290,7 +1290,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0xC8:{ // RET Z
@@ -1311,7 +1311,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0xD0:{ // RET NC
@@ -1332,7 +1332,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0xD8:{ // RET C
@@ -1353,7 +1353,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0xC9:{ // RET
@@ -1371,7 +1371,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0xD9:{ // RETI
@@ -1391,7 +1391,7 @@ i32 run_cpu(CPU *cpu){
                         cpu->is_extended = cpu->was_extended;
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0xC2:{ // JP NZ, imm16
@@ -1411,7 +1411,7 @@ i32 run_cpu(CPU *cpu){
                     else if(cpu->machine_cycle == 4){
                         go_to_next_instruction(cpu);
                     }
-                    return 4;
+                    break;
                 }
 
                 case 0xCA:{ // JP Z, imm16
@@ -1432,7 +1432,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0xD2:{ // JP NC, imm16
@@ -1452,7 +1452,7 @@ i32 run_cpu(CPU *cpu){
                     else if(cpu->machine_cycle == 4){
                         go_to_next_instruction(cpu);
                     }
-                    return 4;
+                    break;
                 }
 
                 case 0xDA:{ // JP C, imm16
@@ -1473,7 +1473,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0xC3:{ // JP imm16
@@ -1491,14 +1491,14 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0xE9:{ // JP HL
                     cpu->PC = cpu->HL;
                     go_to_next_instruction(cpu);
 
-                    return 4;
+                    break;
                 }
 
                 case 0xC4:{ // CALL NZ, imm16
@@ -1528,7 +1528,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0xCC:{ // CALL Z, imm16
@@ -1558,7 +1558,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0xD4:{ // CALL NC, imm16
@@ -1588,7 +1588,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0xDC:{ // CALL C, imm16
@@ -1618,7 +1618,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0xCD:{ // CALL imm16
@@ -1645,7 +1645,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0xC7:
@@ -1674,7 +1674,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0xC1:
@@ -1696,7 +1696,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0xC5:
@@ -1720,13 +1720,13 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0xCB:{
                     cpu->is_extended = true;
                     go_to_next_instruction(cpu);
-                    return 4;
+                    break;
                 }
 
                 case 0xE2:{ // LDH [C], A
@@ -1738,7 +1738,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 } 
 
                 case 0xE0:{ // LDH [imm8], A
@@ -1753,7 +1753,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
                         
-                    return 4;
+                    break;
                 }
 
                 case 0xEA:{ // LDH [imm16], A
@@ -1770,7 +1770,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
                         
-                    return 4;
+                    break;
                 }
 
                 case 0xF2:{ // LDH A, [C]
@@ -1783,7 +1783,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 } 
 
                 case 0xF0:{ // LDH A, [imm8]
@@ -1799,7 +1799,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
                         
-                    return 4;
+                    break;
                 }
 
                 case 0xFA:{ // LDH A, [imm16]
@@ -1817,7 +1817,7 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
                         
-                    return 4;
+                    break;
                 }
 
                 case 0xE8:{ // ADD SP, e
@@ -1844,7 +1844,7 @@ i32 run_cpu(CPU *cpu){
                         cpu->SP += imm8s;
                         go_to_next_instruction(cpu);
                     }
-                    return 4;
+                    break;
                 }
 
                 case 0xF8:{ // LD HL, SP+e
@@ -1859,7 +1859,7 @@ i32 run_cpu(CPU *cpu){
                         cpu->HL = cpu->SP + imm8s;
                         go_to_next_instruction(cpu);
                     }
-                    return 4;
+                    break;
                 }
 
                 case 0xF9:{ // LD SP, HL
@@ -1870,27 +1870,27 @@ i32 run_cpu(CPU *cpu){
                         go_to_next_instruction(cpu);
                     }
 
-                    return 4;
+                    break;
                 }
 
                 case 0xF3:{ // DI
                     cpu->IME = false;
                     cpu->scheduled_ei = false;
                     go_to_next_instruction(cpu);
-                    return 4;
+                    break;
                 }
 
                 case 0xFB:{ // EI
                     cpu->scheduled_ei = true;
                     go_to_next_instruction(cpu);
-                    return 4;
+                    break;
                 }
                 
                 default:{
                     printf("Opcode %X not implemented\n", cpu->opcode);
                     print_cpu(cpu);
                     assert(false);
-                    return 4;
+                    break;
                 }
 
             }
@@ -1903,7 +1903,7 @@ i32 run_cpu(CPU *cpu){
             printf("Opcode %X not implemented\n", cpu->opcode);
             print_cpu(cpu);
             assert(false);
-            return 4;
+            break;
         }
     }
     }
@@ -1956,7 +1956,7 @@ i32 run_cpu(CPU *cpu){
                             cpu->is_extended = false;
                         }
 
-                        return 4;
+                        break;
                     }
 
                     case 0x08:{ // RRC r
@@ -2005,7 +2005,7 @@ i32 run_cpu(CPU *cpu){
                             cpu->is_extended = false;
                         }
 
-                        return 4;
+                        break;
                     }
 
                     case 0x10:{ // RL r
@@ -2058,7 +2058,7 @@ i32 run_cpu(CPU *cpu){
                             cpu->is_extended = false;
                         }
 
-                        return 4;
+                        break;
                     }
 
                     case 0x18:{ // RR r
@@ -2111,7 +2111,7 @@ i32 run_cpu(CPU *cpu){
                             cpu->is_extended = false;
                         }
 
-                        return 4;
+                        break;
                     }
 
                     case 0x20:{ // SLA r
@@ -2158,7 +2158,7 @@ i32 run_cpu(CPU *cpu){
                             cpu->is_extended = false;
                         }
 
-                        return 4;
+                        break;
                     }
 
                     case 0x28:{ // SRA r
@@ -2213,7 +2213,7 @@ i32 run_cpu(CPU *cpu){
                             cpu->is_extended = false;
                         }
 
-                        return 4;
+                        break;
                     }
 
                     case 0x30:{ // SWAP r
@@ -2264,7 +2264,7 @@ i32 run_cpu(CPU *cpu){
                             cpu->is_extended = false;
                         }
 
-                        return 4;
+                        break;
                     }
 
                     case 0x38:{ // SRL r
@@ -2313,13 +2313,13 @@ i32 run_cpu(CPU *cpu){
                             cpu->is_extended = false;
                         }
 
-                        return 4;
+                        break;
                     }
                     default:{
                         printf("Opcode %X not implemented\n", cpu->opcode);
                         print_cpu(cpu);
                         assert(false);
-                        return 4;
+                        break;
                     }
                 }
                 
@@ -2355,7 +2355,7 @@ i32 run_cpu(CPU *cpu){
                     cpu->is_extended = false;
                 }
 
-                return 4;
+                break;
             }
 
             case 0x80:{ // RES instructions
@@ -2384,7 +2384,7 @@ i32 run_cpu(CPU *cpu){
                     cpu->is_extended = false;
                 }
 
-                return 4;
+                break;
             }
 
             case 0xC0:{ // SET instructions
@@ -2413,12 +2413,12 @@ i32 run_cpu(CPU *cpu){
                     cpu->is_extended = false;
                 }
 
-                return 4;
+                break;
             }
 
             default:{
                 printf("Prefixed Opcode %X not implemented\n", cpu->opcode);
-                return 4;
+                break;
             } 
         }
     }

@@ -106,7 +106,7 @@ struct PPU;
 
 
 void init_cpu(CPU *cpu, Memory *memory);
-i32 run_cpu(CPU *cpu);
+void run_cpu(CPU *cpu);
 u8 fetch(CPU *cpu);
 void go_to_next_instruction(CPU *cpu);
 
