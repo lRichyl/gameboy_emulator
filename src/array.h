@@ -68,10 +68,7 @@ template<typename T>
 T array_pop(Array<T> *array){
 	assert(array);
 	T value {};
-	if(array->size == 0){
-		printf("Cannot pop value from empty array, returned default value\n");
-		return value;
-	}
+	assert(array->size != 0);
 		 
 	array->size--;
 	assert(array->size >= 0);

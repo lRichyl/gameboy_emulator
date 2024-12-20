@@ -95,6 +95,7 @@ void init_ppu(PPU *ppu, Memory *memory, SDL_Renderer *renderer){
     ppu->frame_ready = false;
     ppu->stop_fifos = false;
     ppu->fetching_sprite = false;
+    ppu->check_sprites = true;
     set_stat_ppu_mode(ppu, 2);
 }
 
@@ -116,8 +117,8 @@ static void check_if_sprite_is_in_current_position(PPU *ppu){
         for(int i = 0; i < ppu->sprites.size; i++){
             Sprite sprite = array_get(&ppu->sprites, i);
             // if (sprite.x_position < 8) continue;
-            if(ppu->pixel_count > 7){
-                if(sprite.x_position - 8 == ppu->pixel_count){
+            if(ppu->pixel_count >= 0){
+                if(sprite.x_position - 64 == ppu->pixel_count){
                     array_add(&ppu->sprites_active, sprite);
 
                     ppu->stop_fifos = true;
@@ -125,6 +126,14 @@ static void check_if_sprite_is_in_current_position(PPU *ppu){
                     break;
                 }
             }
+            // else if(ppu->pixel_count >= 0){
+            //     if(sprite.x_position - 56 > 0 && sprite.x_position - 56 <= 8){
+            //         array_add(&ppu->sprites_active, sprite);
+
+            //         ppu->stop_fifos = true;
+            //         ppu->tile_fetch_state = TILE_FETCH_SPRITE_INDEX;
+            //     }
+            // }
             if(i == ppu->sprites_active.capacity - 1) break;
         }
         ppu->check_sprites = false;
@@ -144,7 +153,7 @@ static void push_to_screen(PPU *ppu){
 
     // TODO: Here we should return when scrolling.
     Color color;
-    if(ppu->sprite_fifo.size > 0){
+    if(ppu->sprite_fifo.size > 0 && (!ppu->skip_fifo)){
         Pixel sp_pixel = array_pop(&ppu->sprite_fifo);
         if(sp_pixel.color == 0 || (sp_pixel.bg_priority && bg_pixel.color != 0)){
 
@@ -451,24 +460,48 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                             }
 
                         }
-                        // The first time an object is present in the scanline the fifo is fully populated.
-                        if(ppu->sprite_fifo.size == 0){
-                            array_copy(&ppu->sprite_fifo, &ppu->sprite_mixing_fifo);
-                        }
-                        else{
-                            // When there is already pixel data in the pixel fifo we mix them.
-                            ppu->sprite_fifo.size = 8; // Bad
-                            for(int i = 0; i < ppu->sprite_fifo.size; i++){
-                                u8 current_color = array_get(&ppu->sprite_fifo, i).color;
-                                assert(current_color <= 3);
-                                Pixel pixel = array_get(&ppu->sprite_mixing_fifo, i);
-                                if(current_color == 0){
-                                    array_set(&ppu->sprite_fifo, i, pixel);
-                                }
-                                
-                            }
 
-                        }
+                        //if(ppu->pixel_count > 7){
+                            // The first time an object is present in the scanline the fifo is fully populated.
+                            if(ppu->sprite_fifo.size == 0){
+                                array_copy(&ppu->sprite_fifo, &ppu->sprite_mixing_fifo);
+                            }
+                            else{
+                                // When there is already pixel data in the pixel fifo we mix them.
+                                ppu->sprite_fifo.size = 8; // Bad
+                                for(int i = 0; i < ppu->sprite_fifo.size; i++){
+                                    u8 current_color = array_get(&ppu->sprite_fifo, i).color;
+                                    assert(current_color <= 3);
+                                    Pixel pixel = array_get(&ppu->sprite_mixing_fifo, i);
+                                    if(current_color == 0){
+                                        array_set(&ppu->sprite_fifo, i, pixel);
+                                    }
+                                }
+                            }
+                        //}
+                        //else if(ppu->pixel_count >= 0){ // When an object is at any position below the 8th pixel it clips.
+                            //ppu->sprite_fifo.size = 8; // Bad
+                            //if(ppu->sprite_fifo.size == 0){
+                            //    array_copy(&ppu->sprite_fifo, &ppu->sprite_mixing_fifo);
+                            //}
+                            //else{
+                            //    u8 clipping_offset =  8 - (ppu->sprite.x_position - 56);
+
+                            //    for(int i = 0; i < clipping_offset; i++){
+                            //        array_pop(&ppu->sprite_mixing_fifo);
+                            //    }
+                            //    
+                            //    for(int i = 0; i < 8 - clipping_offset - 1; i++){
+                            //        u8 current_color = array_get(&ppu->sprite_fifo, ppu->sprite_fifo.size - i - 1).color;
+                            //        assert(current_color <= 3);
+                            //        Pixel pixel = array_pop(&ppu->sprite_mixing_fifo);
+                            //        if(current_color == 0){
+                            //            array_set(&ppu->sprite_fifo, i, pixel);
+                            //        }
+                            //    }
+                            //}
+                        //}
+
                         array_clear(&ppu->sprite_mixing_fifo);
                         ppu->sprites_processed++; 
 
@@ -488,14 +521,17 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                     }
                 }
 
-                check_if_sprite_is_in_current_position(ppu);
-                push_to_screen(ppu);
-                check_if_sprite_is_in_current_position(ppu);
-                push_to_screen(ppu);
+                // if(!ppu->do_dummy_fetch){
+                    check_if_sprite_is_in_current_position(ppu);
+                    push_to_screen(ppu);
+                    check_if_sprite_is_in_current_position(ppu);
+                    push_to_screen(ppu);
+                // }
 
                 ppu->cycles += 2;
                 if(ppu->pixel_count == 160){ 
                     array_clear(&ppu->bg_fifo);
+                    array_clear(&ppu->sprite_fifo);
                     ppu->mode = MODE_HBLANK;
                     ppu->tile_fetch_state = TILE_FETCH_TILE_INDEX;
                         
