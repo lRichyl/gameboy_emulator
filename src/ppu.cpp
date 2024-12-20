@@ -116,9 +116,9 @@ static void check_if_sprite_is_in_current_position(PPU *ppu){
     if(ppu->check_sprites){
         for(int i = 0; i < ppu->sprites.size; i++){
             Sprite sprite = array_get(&ppu->sprites, i);
-            // if (sprite.x_position < 8) continue;
-            if(ppu->pixel_count >= 0){
-                if(sprite.x_position - 64 == ppu->pixel_count){
+            i32 sprite_x_corrected = sprite.x_position - 8;
+            if(sprite_x_corrected >= 0){
+                if(sprite_x_corrected == ppu->pixel_count){
                     array_add(&ppu->sprites_active, sprite);
 
                     ppu->stop_fifos = true;
@@ -126,14 +126,14 @@ static void check_if_sprite_is_in_current_position(PPU *ppu){
                     break;
                 }
             }
-            // else if(ppu->pixel_count >= 0){
-            //     if(sprite.x_position - 56 > 0 && sprite.x_position - 56 <= 8){
-            //         array_add(&ppu->sprites_active, sprite);
+            else if((i32)sprite_x_corrected < 0 && (i32)sprite_x_corrected >= -7){
+                if(sprite_x_corrected == (i32)(ppu->pixel_count - (8 - sprite.x_position))){
+                    array_add(&ppu->sprites_active, sprite);
 
-            //         ppu->stop_fifos = true;
-            //         ppu->tile_fetch_state = TILE_FETCH_SPRITE_INDEX;
-            //     }
-            // }
+                    ppu->stop_fifos = true;
+                    ppu->tile_fetch_state = TILE_FETCH_SPRITE_INDEX;
+                }
+            }
             if(i == ppu->sprites_active.capacity - 1) break;
         }
         ppu->check_sprites = false;
@@ -460,47 +460,50 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                             }
 
                         }
-
-                        //if(ppu->pixel_count > 7){
-                            // The first time an object is present in the scanline the fifo is fully populated.
-                            if(ppu->sprite_fifo.size == 0){
-                                array_copy(&ppu->sprite_fifo, &ppu->sprite_mixing_fifo);
-                            }
-                            else{
-                                // When there is already pixel data in the pixel fifo we mix them.
-                                ppu->sprite_fifo.size = 8; // Bad
-                                for(int i = 0; i < ppu->sprite_fifo.size; i++){
-                                    u8 current_color = array_get(&ppu->sprite_fifo, i).color;
-                                    assert(current_color <= 3);
-                                    Pixel pixel = array_get(&ppu->sprite_mixing_fifo, i);
-                                    if(current_color == 0){
-                                        array_set(&ppu->sprite_fifo, i, pixel);
+                            
+                            i32 sprite_x_corrected = (i32)(ppu->sprite.x_position) - 8;
+                            if(sprite_x_corrected >= 0){
+                                if(ppu->sprite_fifo.size == 0){
+                                    array_copy(&ppu->sprite_fifo, &ppu->sprite_mixing_fifo);
+                                }
+                                else{
+                                    // When there is already pixel data in the pixel fifo we mix them.
+                                    ppu->sprite_fifo.size = 8; // Bad
+                                    for(int i = 0; i < ppu->sprite_fifo.size; i++){
+                                        u8 current_color = array_get(&ppu->sprite_fifo, i).color;
+                                        assert(current_color <= 3);
+                                        Pixel pixel = array_get(&ppu->sprite_mixing_fifo, i);
+                                        if(current_color == 0){
+                                            array_set(&ppu->sprite_fifo, i, pixel);
+                                        }
                                     }
                                 }
                             }
-                        //}
-                        //else if(ppu->pixel_count >= 0){ // When an object is at any position below the 8th pixel it clips.
-                            //ppu->sprite_fifo.size = 8; // Bad
-                            //if(ppu->sprite_fifo.size == 0){
-                            //    array_copy(&ppu->sprite_fifo, &ppu->sprite_mixing_fifo);
-                            //}
-                            //else{
-                            //    u8 clipping_offset =  8 - (ppu->sprite.x_position - 56);
+                            else if(sprite_x_corrected < 0){
+                                
+                                u8 clipping_offset =  8 - (ppu->sprite.x_position);
+                                for(int i = 0; i < clipping_offset; i++){
+                                    array_pop(&ppu->sprite_mixing_fifo);
+                                }
 
-                            //    for(int i = 0; i < clipping_offset; i++){
-                            //        array_pop(&ppu->sprite_mixing_fifo);
-                            //    }
-                            //    
-                            //    for(int i = 0; i < 8 - clipping_offset - 1; i++){
-                            //        u8 current_color = array_get(&ppu->sprite_fifo, ppu->sprite_fifo.size - i - 1).color;
-                            //        assert(current_color <= 3);
-                            //        Pixel pixel = array_pop(&ppu->sprite_mixing_fifo);
-                            //        if(current_color == 0){
-                            //            array_set(&ppu->sprite_fifo, i, pixel);
-                            //        }
-                            //    }
-                            //}
-                        //}
+                                if(ppu->sprite_fifo.size == 0){
+                                    for(int i = 0; i <  8 - clipping_offset; i++){
+                                        Pixel pixel = array_get(&ppu->sprite_mixing_fifo, i);
+                                        array_add(&ppu->sprite_fifo, pixel);                                    
+                                    }
+                                }
+                                else{
+                                    ppu->sprite_fifo.size = 8; // Bad
+                                   for(int i = 0; i < 8 - clipping_offset - 1; i++){
+                                       u8 current_color = array_get(&ppu->sprite_fifo, ppu->sprite_fifo.size - i - 1).color;
+                                       assert(current_color <= 3);
+                                       Pixel pixel = array_pop(&ppu->sprite_mixing_fifo);
+                                       if(current_color == 0){
+                                           array_set(&ppu->sprite_fifo, ppu->sprite_fifo.size - i - 1, pixel);
+                                       }
+                                   }
+                                }
+                            }
 
                         array_clear(&ppu->sprite_mixing_fifo);
                         ppu->sprites_processed++; 
@@ -521,12 +524,12 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                     }
                 }
 
-                // if(!ppu->do_dummy_fetch){
-                    check_if_sprite_is_in_current_position(ppu);
-                    push_to_screen(ppu);
-                    check_if_sprite_is_in_current_position(ppu);
-                    push_to_screen(ppu);
-                // }
+                
+                check_if_sprite_is_in_current_position(ppu);
+                push_to_screen(ppu);
+                check_if_sprite_is_in_current_position(ppu);
+                push_to_screen(ppu);
+                
 
                 ppu->cycles += 2;
                 if(ppu->pixel_count == 160){ 

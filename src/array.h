@@ -55,12 +55,10 @@ void array_add(Array<T> *array, T data) {
 template<typename T>
 void array_set(Array<T> *array, u32 index, T data){
 	assert(array);
-	if(index < array->capacity){
-		array->data[index] = data;
-	}
-	else{
-		printf("Array: Trying to write to an index out of bounds");
-	}
+	assert(index < array->capacity);
+	
+	array->data[index] = data;
+	
 }
 
 // Get the last element of the array and reduce its size by one.
@@ -102,7 +100,7 @@ void array_copy(Array<T> *dst, Array<T> *src){
 template<typename T>
 T array_get(Array<T> *array, u32 index){
 	assert(array->data);
-	if(index < array->size){
+	if(index < array->capacity){
 		return array->data[index];
 	}
 	printf("Indexing array out of bounds\n");
