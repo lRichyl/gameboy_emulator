@@ -143,6 +143,8 @@ static void check_if_sprite_is_in_current_position(PPU *ppu){
 static void push_to_screen(PPU *ppu){
     // TODO: Here we should return when scrolling.
 
+    
+
     if(ppu->bg_fifo.size == 0) return;
     if(ppu->stop_fifos) return;
 
@@ -158,7 +160,9 @@ static void push_to_screen(PPU *ppu){
         if(sp_pixel.color == 0 || (sp_pixel.bg_priority && bg_pixel.color != 0)){
 
             color = ppu->colors[bg_color_ids[bg_pixel.color]];
-            // color = {255,0,0};
+            // if(ppu->render_window){
+            //     color = {255,0,0};
+            // }
         }
         else{
             u16 address;
@@ -173,7 +177,9 @@ static void push_to_screen(PPU *ppu){
     }
     else{
         color = ppu->colors[bg_color_ids[bg_pixel.color]];
-        // color = {255,0,0};
+        // if(ppu->render_window){
+        //     color = {255,0,0};
+        // }
     }
 
     if(!ppu->skip_fifo){
@@ -186,7 +192,14 @@ static void push_to_screen(PPU *ppu){
         
         ppu->check_sprites = true;
         
+        if(ppu->LY_equals_WY && ((get_WX(ppu)-7) == ppu->pixel_count) && (read_lcdc(ppu) & LCDC_WINDOW_ENABLE)){
+            ppu->render_window = true;
+            ppu->tile_fetch_state = TILE_FETCH_TILE_INDEX;
+            array_clear(&ppu->bg_fifo);
+        }
     }
+
+    
 
     if(ppu->bg_fifo.size == 0) ppu->skip_fifo = false;
     
@@ -243,18 +256,9 @@ void ppu_tick(PPU *ppu, CPU *cpu){
         if(get_LY(ppu) == 0) unset_LYC_LY(ppu);
         switch(ppu->mode){
             case MODE_OAM_SCAN:{
-                // if(ppu->cycles >= 0x04){
-                //     if(get_LY(ppu) == get_LYC(ppu)){
-                //         set_LYC_LY(ppu);
-                //         if(read_memory_ppu(ppu, 0xFF41) & LCDSTAT_LYC_INT){
-                //             ppu->stat_interrupt_set = true;
-                //             set_interrupt(cpu, INT_LCD);
-                //         }
-                //     }
-                //     else{
-                //         unset_LYC_LY(ppu);
-                //     }
-                // }
+                if(get_LY(ppu) == get_WY(ppu)){
+                    ppu->LY_equals_WY = true;
+                }
 
                 set_stat_ppu_mode(ppu, 2);
                  if((read_memory_ppu(ppu, 0xFF41) & LCDSTAT_MODE_2)  && !ppu->stat_interrupt_set){
@@ -295,22 +299,40 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                 set_stat_ppu_mode(ppu, 3);
                 switch(ppu->tile_fetch_state){
                     case TILE_FETCH_TILE_INDEX:{
-                        u32 offset = ((ppu->tile_x + (get_SCX(ppu) / 8)) & 0x1F) + (32 * (((get_LY(ppu) + get_SCY(ppu)) & 0xFF) / 8));
-                        u16 address = 0;
-                        (read_lcdc(ppu) & LCDC_BG_TILEMAP) ? address = 0x9C00 : address = 0x9800;
-                        
+                        u32 offset;
+                        u16 address;
+                        if(ppu->render_window){
+                            offset = (ppu->window_tile_x) + (32 * (ppu->window_line_counter / 8));
+                            (read_lcdc(ppu) & LCDC_WIN_TILEMAP) ? address = 0x9C00 : address = 0x9800;
+                        }
+                        else{
+                            offset = ((ppu->tile_x + (get_SCX(ppu) / 8)) & 0x1F) + (32 * (((get_LY(ppu) + get_SCY(ppu)) & 0xFF) / 8));
+                            (read_lcdc(ppu) & LCDC_BG_TILEMAP) ? address = 0x9C00 : address = 0x9800;
+                        }
                         ppu->tile_index = read_memory_ppu(ppu, address + offset); 
                         ppu->tile_fetch_state = TILE_FETCH_TILE_LOW;
                         break;
                     }
                     case TILE_FETCH_TILE_LOW:{
                         if((read_lcdc(ppu) & LCDC_BG_WIN_TILEDATA)){ // $8000 addressing mode
-                            u32 offset = 2 * ((get_LY(ppu) + get_SCY(ppu)) % 8); 
+                            u32 offset;
+                            if(ppu->render_window  && (read_lcdc(ppu) & LCDC_WINDOW_ENABLE)){
+                                offset = 2 * (ppu->window_line_counter % 8); 
+                            }
+                            else{
+                                offset = 2 * ((get_LY(ppu) + get_SCY(ppu)) % 8); 
+                            }
                             u16 address = 0x8000 + (ppu->tile_index * 16) + offset; 
                             ppu->tile_low = read_memory_ppu(ppu, address);
                         }
                         else{ // $8800 addressing mode
-                            u8 offset = 2 * ((get_LY(ppu) + get_SCY(ppu)) % 8); 
+                            u32 offset;
+                            if(ppu->render_window && (read_lcdc(ppu) & LCDC_WINDOW_ENABLE)){
+                                offset = 2 * (ppu->window_line_counter % 8); 
+                            }
+                            else{
+                                offset = 2 * ((get_LY(ppu) + get_SCY(ppu)) % 8); 
+                            }
                             u16 address;
                             if(offset > 127){
                                 offset -= 128;
@@ -330,12 +352,24 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                     }
                     case TILE_FETCH_TILE_HIGH:{
                         if((read_lcdc(ppu) & LCDC_BG_WIN_TILEDATA)){ // $8000 addressing mode
-                            u32 offset = 2 * ((get_LY(ppu) + get_SCY(ppu)) % 8); 
+                            u32 offset;
+                            if(ppu->render_window && (read_lcdc(ppu) & LCDC_WINDOW_ENABLE)){
+                                offset = 2 * (ppu->window_line_counter % 8); 
+                            }
+                            else{
+                                offset = 2 * ((get_LY(ppu) + get_SCY(ppu)) % 8); 
+                            } 
                             u16 address = 0x8000 + (ppu->tile_index * 16) + offset + 1; 
                             ppu->tile_high = read_memory_ppu(ppu, address);
                         }
                         else{ // $8800 addressing mode
-                            u8 offset = 2 * ((get_LY(ppu) + get_SCY(ppu)) % 8); 
+                            u32 offset;
+                            if(ppu->render_window && (read_lcdc(ppu) & LCDC_WINDOW_ENABLE)){
+                                offset = 2 * (ppu->window_line_counter % 8); 
+                            }
+                            else{
+                                offset = 2 * ((get_LY(ppu) + get_SCY(ppu)) % 8); 
+                            }
                             u16 address;
                             if(offset > 127){
                                 offset -= 128;
@@ -350,7 +384,7 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                             ppu->tile_high = 0x00;
                         }
 
-                        if(ppu->bg_fifo.size == 0){ // Background FIFO is empty so we can push a row of pixels.
+                        if(ppu->bg_fifo.size == 0 && !(read_lcdc(ppu) & LCDC_BG_WIN_ENABLE)){ // Background FIFO is empty so we can push a row of pixels.
                             for(int i = 0; i < 8; i++){
                                 Pixel pixel;
                                 u8 color_low  = (ppu->tile_low  >> i) & 0x1;
@@ -384,6 +418,7 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                             }
                             ppu->tile_fetch_state =  TILE_FETCH_TILE_INDEX;
                             ppu->tile_x++;
+                            if(ppu->render_window && (read_lcdc(ppu) & LCDC_WINDOW_ENABLE)) ppu->window_tile_x++;
                         }
                         break;
                     }
@@ -591,9 +626,14 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                         
                     array_clear(&ppu->sprites); // Clear the list of sprites for the current scanline.
                     
-                    
-                    // unset_interrupt(cpu, INT_LCD);
                     ppu->stat_interrupt_set = false;
+                    
+                    if(ppu->render_window){
+                        ppu->window_line_counter++;
+                    }
+                    ppu->render_window = false;
+                    ppu->window_tile_x = 0;
+
                 }
                 break;
             }
@@ -612,6 +652,8 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                     }
                     else if(get_LY(ppu) == 144){
                         ppu->mode = MODE_VBLANK;
+                        ppu->LY_equals_WY = false;
+                        ppu->render_window = false;
                     }
 
                     ppu->do_dummy_fetch = true;
@@ -633,11 +675,14 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                 if(ppu->cycles == 456){
                     if(get_LY(ppu) == 153){
                         ppu->mode = MODE_OAM_SCAN;
+                        
                         set_LY(ppu, 0);
                         ppu->current_pos = 0;
-                        ppu_render(ppu);
-                        ppu->frame_ready = true;
+                        ppu->window_line_counter = 0;
                         count = 0;
+                        
+                        ppu->frame_ready = true;
+                        ppu_render(ppu);
                     }
                     else{
                         increase_LY(ppu);

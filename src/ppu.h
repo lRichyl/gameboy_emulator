@@ -109,6 +109,11 @@ struct PPU{
     Array<Pixel> sprite_fifo;
     Array<Pixel> sprite_mixing_fifo;
 
+    bool render_window;
+    bool LY_equals_WY;
+    u8 window_tile_x;
+    u8 window_line_counter;
+
     u8 sprites_processed;
     Sprite sprite;
 };
