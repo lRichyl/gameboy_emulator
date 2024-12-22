@@ -33,18 +33,18 @@ void run_gameboy(Gameboy *gmb, LARGE_INTEGER starting_time, i64 perf_count_frequ
     }
 
     // Handle emulator timing
-    while(1){// Busy wait.
-        LARGE_INTEGER end_counter;
-        QueryPerformanceCounter(&end_counter);
+    //while(1){// Busy wait.
+    //    LARGE_INTEGER end_counter;
+    //    QueryPerformanceCounter(&end_counter);
 
-        i64 counter_elapsed = end_counter.QuadPart - starting_time.QuadPart; 
-        f32 ms_elapsed     = (f32)((1000.0f*(f32)counter_elapsed) / (f32)perf_count_frequency);
-        if(ms_elapsed >= gmb->frame_time){
-            //printf("Milliseconds elapsed: \t%f\n", ms_elapsed);
-            // printf("Cycles ran last frame: \t%d\n", cycles_delta);
-            break;  
-        } 
-    }
+    //    i64 counter_elapsed = end_counter.QuadPart - starting_time.QuadPart; 
+    //    f32 ms_elapsed     = (f32)((1000.0f*(f32)counter_elapsed) / (f32)perf_count_frequency);
+    //    if(ms_elapsed >= gmb->frame_time){
+    //        //printf("Milliseconds elapsed: \t%f\n", ms_elapsed);
+    //        // printf("Cycles ran last frame: \t%d\n", cycles_delta);
+    //        break;  
+    //    } 
+    //}
     
     
     ppu->frame_ready = false;

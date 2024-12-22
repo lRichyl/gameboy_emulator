@@ -157,13 +157,13 @@ u8 sum_and_set_flags(CPU *cpu, u8 summand_left, u8 summand_right, b32 check_carr
 
     u8 nibble_left_summand     = summand_left    & 0x0F;
     u8 nibble_right_summand    = summand_right   & 0x0F;
-    if((nibble_left_summand + nibble_right_summand) & 0x10) 
+    if((nibble_left_summand + nibble_right_summand) > 0x0F) 
         set_flag(cpu, FLAG_HALFCARRY);
     else
         unset_flag(cpu, FLAG_HALFCARRY);
 
     if(check_carry){
-        if(result & 0x100) 
+        if(result > 0xFF) 
             set_flag(cpu, FLAG_CARRY);
         else
             unset_flag(cpu, FLAG_CARRY);
@@ -172,11 +172,37 @@ u8 sum_and_set_flags(CPU *cpu, u8 summand_left, u8 summand_right, b32 check_carr
     return (u8)result;
 }
 
+u8 sum_and_set_flags_adc(CPU *cpu, u8 summand_left, u8 summand_right){
+    u8 carry = (cpu->flags & FLAG_CARRY) >> 4;
+    u16 result = (u16)summand_left + (u16)summand_right + carry;
+                            
+    if(u8(result) == 0)     
+        set_flag(cpu, FLAG_ZERO);
+    else
+        unset_flag(cpu, FLAG_ZERO);
+
+    unset_flag(cpu, FLAG_SUB);
+
+    u8 nibble_left_summand     = cpu->A          & 0x0F;
+    u8 nibble_right_summand    = summand_right   & 0x0F;
+    if((nibble_left_summand + nibble_right_summand + carry) > 0x0F) 
+        set_flag(cpu, FLAG_HALFCARRY);
+    else
+        unset_flag(cpu, FLAG_HALFCARRY);
+
+    if(result > 0xFF) 
+        set_flag(cpu, FLAG_CARRY);
+    else
+        unset_flag(cpu, FLAG_CARRY);
+
+    return (u8)result;
+}
+
 static u8 substract_and_set_flags(CPU *cpu, u8 minuend, u8 sustrahend, b32 check_carry = false, bool check_zero = false){
     u8 result = minuend - sustrahend;
 
     if(check_zero){
-        if(u8(result) == 0)     
+        if(result == 0)     
             set_flag(cpu, FLAG_ZERO);
         else
             unset_flag(cpu, FLAG_ZERO);
@@ -193,13 +219,38 @@ static u8 substract_and_set_flags(CPU *cpu, u8 minuend, u8 sustrahend, b32 check
         unset_flag(cpu, FLAG_HALFCARRY);
 
     if(check_carry){
-        //if(sustrahend > minuend){
-            if(minuend < sustrahend) 
-                set_flag(cpu, FLAG_CARRY);
-            else
-                unset_flag(cpu, FLAG_CARRY);
-        //}
+        if(minuend < sustrahend) 
+            set_flag(cpu, FLAG_CARRY);
+        else
+            unset_flag(cpu, FLAG_CARRY);
     }
+
+    return result;
+}
+
+static u8 substract_and_set_flags_sbc(CPU *cpu, u8 minuend, u8 sustrahend){
+    u8 carry = (cpu->flags & FLAG_CARRY) >> 4;
+    u8 result = minuend - (sustrahend + carry);
+
+    if(result == 0)     
+        set_flag(cpu, FLAG_ZERO);
+    else
+        unset_flag(cpu, FLAG_ZERO);
+
+    set_flag(cpu, FLAG_SUB);
+  
+    u8 nibble_minuend    = (minuend    & 0x0F);
+    u8 nibble_sustrahend = (sustrahend & 0x0F);
+
+    if(nibble_sustrahend > nibble_minuend - carry) 
+        set_flag(cpu, FLAG_HALFCARRY);
+    else
+        unset_flag(cpu, FLAG_HALFCARRY);
+
+    if(minuend < sustrahend + carry) 
+        set_flag(cpu, FLAG_CARRY);
+    else
+        unset_flag(cpu, FLAG_CARRY);
 
     return result;
 }
@@ -972,10 +1023,9 @@ void run_cpu(CPU *cpu){
                         u8 reg  = (cpu->opcode & 0x07);
                         assert(reg <= 7 && reg >= 0);
 
-                        u8 carry = (cpu->flags & FLAG_CARRY) >> 4;
-
                         if(reg != 6){
-                            cpu->A = sum_and_set_flags(cpu, cpu->A, *cpu->register_map[reg] + carry, true, true);
+                            cpu->A = sum_and_set_flags_adc(cpu, cpu->A, *cpu->register_map[reg]);
+
                             go_to_next_instruction(cpu);
                         }
                         else if (reg == 6){ // ADC A, [HL]
@@ -985,8 +1035,7 @@ void run_cpu(CPU *cpu){
                     }
                     else if(cpu->machine_cycle == 2){
                         // ADC A, [HL]
-                        u8 carry = (cpu->flags & FLAG_CARRY) >> 4;
-                        cpu->A = sum_and_set_flags(cpu, cpu->A, mem_value + carry, true, true);
+                        cpu->A = sum_and_set_flags_adc(cpu, cpu->A, mem_value);
                         
                         go_to_next_instruction(cpu);
                     }
@@ -1022,10 +1071,8 @@ void run_cpu(CPU *cpu){
                         u8 reg  = (cpu->opcode & 0x07);
                         assert(reg <= 7 && reg >= 0);
 
-                        u8 carry = (cpu->flags & FLAG_CARRY) >> 4;
-
                         if(reg != 6){
-                            cpu->A = substract_and_set_flags(cpu, cpu->A, *cpu->register_map[reg] + carry, true, true);
+                            cpu->A = substract_and_set_flags_sbc(cpu, cpu->A, *cpu->register_map[reg]);
                             go_to_next_instruction(cpu);
                         }
                         else if (reg == 6){ // SBC A, [HL]
@@ -1035,8 +1082,7 @@ void run_cpu(CPU *cpu){
                     }
                     else if(cpu->machine_cycle == 2){
                         // SBC A, [HL]
-                        u8 carry = (cpu->flags & FLAG_CARRY) >> 4;
-                        cpu->A = substract_and_set_flags(cpu, cpu->A, mem_value + carry, true, true);
+                        cpu->A = substract_and_set_flags_sbc(cpu, cpu->A, mem_value);
                         
                         go_to_next_instruction(cpu);
                     }
@@ -1203,8 +1249,8 @@ void run_cpu(CPU *cpu){
                         immr8 = fetch(cpu);
                     }
                     else if(cpu->machine_cycle == 2){
-                        u8 carry = (cpu->flags & FLAG_CARRY) >> 4;
-                        cpu->A = sum_and_set_flags(cpu, cpu->A, immr8 + carry, true, true);     
+                        cpu->A = sum_and_set_flags_adc(cpu, cpu->A, immr8);   
+
                         go_to_next_instruction(cpu);
                     }
 
@@ -1228,8 +1274,7 @@ void run_cpu(CPU *cpu){
                         immr8 = fetch(cpu);
                     }
                     else if(cpu->machine_cycle == 2){
-                        u8 carry = (cpu->flags & FLAG_CARRY) >> 4;
-                        cpu->A = substract_and_set_flags(cpu, cpu->A, immr8 + carry, true, true);     
+                        cpu->A = substract_and_set_flags_sbc(cpu, cpu->A, immr8);     
                         go_to_next_instruction(cpu);
                     }
 
@@ -2202,7 +2247,7 @@ void run_cpu(CPU *cpu){
                                 u8 bit_7 = *(cpu->register_map[reg]) & 0x80;
                                 *(cpu->register_map[reg]) >>= 1;
                                 *(cpu->register_map[reg]) |= bit_7;
-                                *(cpu->register_map[reg]) &= ~(0x40);
+                                // *(cpu->register_map[reg]) &= ~(0x40);
 
                                 if(*(cpu->register_map[reg]) == 0)
                                     set_flag(cpu, FLAG_ZERO);
