@@ -127,3 +127,5 @@ void enable_interrupt(CPU *cpu, Interrupt interrupt);
 void disable_interrupt(CPU *cpu, Interrupt interrupt);
 
 void update_timers(CPU *cpu);
+
+void update_joypad(CPU *cpu, const bool *input);

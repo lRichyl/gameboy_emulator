@@ -16,4 +16,4 @@ struct Gameboy{
 };
 
 void init_gameboy(Gameboy *gmb, SDL_Renderer *renderer, const char *rom_path);
-void run_gameboy(Gameboy *gmb, LARGE_INTEGER starting_time, i64 perf_count_frequency);
+void run_gameboy(Gameboy *gmb, LARGE_INTEGER starting_time, i64 perf_count_frequency, const bool *input);

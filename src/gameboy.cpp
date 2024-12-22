@@ -8,7 +8,7 @@ void init_gameboy(Gameboy *gmb, SDL_Renderer *renderer, const char *rom_path){
     init_ppu(&gmb->ppu, &gmb->memory, renderer);
 }
 
-void run_gameboy(Gameboy *gmb, LARGE_INTEGER starting_time, i64 perf_count_frequency){
+void run_gameboy(Gameboy *gmb, LARGE_INTEGER starting_time, i64 perf_count_frequency, const bool *input){
     CPU *cpu = &gmb->cpu;
     PPU *ppu = &gmb->ppu;
     while(!ppu->frame_ready){
@@ -22,6 +22,8 @@ void run_gameboy(Gameboy *gmb, LARGE_INTEGER starting_time, i64 perf_count_frequ
             run_cpu(cpu);
             cpu->cycles_delta += 4;
         }
+
+        update_joypad(cpu, input);
 
         handle_DMA_transfer(cpu);
         

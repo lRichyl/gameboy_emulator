@@ -141,14 +141,9 @@ static void check_if_sprite_is_in_current_position(PPU *ppu){
 }
 
 static void push_to_screen(PPU *ppu){
-    // TODO: Here we should return when scrolling.
-
-    
-
     if(ppu->bg_fifo.size == 0) return;
     if(ppu->stop_fifos) return;
 
-    u32 offset = 3;
     Pixel bg_pixel = array_pop(&ppu->bg_fifo);
     u16 bg_palette_address = 0xFF47;
     u8 palette = read_memory_ppu(ppu, bg_palette_address);
@@ -182,6 +177,7 @@ static void push_to_screen(PPU *ppu){
         // }
     }
 
+    u32 offset = 3;
     if(!ppu->skip_fifo){
         ppu->pixel_count++;
         ppu->buffer[ppu->current_pos] = color.r;
@@ -192,6 +188,7 @@ static void push_to_screen(PPU *ppu){
         
         ppu->check_sprites = true;
         
+        // Window
         if(ppu->LY_equals_WY && ((get_WX(ppu)-7) == ppu->pixel_count) && (read_lcdc(ppu) & LCDC_WINDOW_ENABLE)){
             ppu->render_window = true;
             ppu->tile_fetch_state = TILE_FETCH_TILE_INDEX;
@@ -210,12 +207,11 @@ static void push_to_screen(PPU *ppu){
 void ppu_render(PPU *ppu){
     i32 pitch;
     u8 *pixels;
+
     SDL_LockTexture(ppu->framebuffer, NULL, (void**)&pixels, &pitch);
     memcpy(pixels, ppu->buffer, BUFFER_SIZE);
-
     SDL_UnlockTexture(ppu->framebuffer);
 
-    // SDL_UpdateTexture(ppu->framebuffer, NULL, ppu->buffer, 160*3);
     SDL_RenderTexture(ppu->renderer, ppu->framebuffer, NULL, NULL);
     memset(ppu->buffer, 0, BUFFER_SIZE);
 }
@@ -232,7 +228,6 @@ void unset_LYC_LY(PPU *ppu){
     write_memory_ppu(ppu, 0xFF41, stat);
 }
 
-u32 count = 0;
 void ppu_tick(PPU *ppu, CPU *cpu){
     static bool once = false;
     if(read_lcdc(ppu) & LCDC_LCD_PPU_ENABLE){
@@ -283,7 +278,6 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                
 
                 ppu->current_oam_address += ppu->oam_offset;
-                count += 2;
                 ppu->cycles += 2;
                 // printf("Cycles %d\n", ppu->cycles);
                 assert(ppu->cycles <= 80);
@@ -611,7 +605,6 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                 
 
                 ppu->cycles += 2;
-                count += 2;
                 if(ppu->pixel_count == 160){ 
                     array_clear(&ppu->bg_fifo);
                     array_clear(&ppu->sprite_fifo);
@@ -639,11 +632,11 @@ void ppu_tick(PPU *ppu, CPU *cpu){
             }
             case MODE_HBLANK:{
                 set_stat_ppu_mode(ppu, 0);
-                 if((read_memory_ppu(ppu, 0xFF41) & LCDSTAT_MODE_0) && !ppu->stat_interrupt_set){
-                     ppu->stat_interrupt_set = true;
-                     set_interrupt(cpu, INT_LCD);
-                 }
-                count += 2;
+                if((read_memory_ppu(ppu, 0xFF41) & LCDSTAT_MODE_0) && !ppu->stat_interrupt_set){
+                    ppu->stat_interrupt_set = true;
+                    set_interrupt(cpu, INT_LCD);
+                }
+
                 ppu->cycles += 2;
                 if(ppu->cycles == 456){
                     increase_LY(ppu);
@@ -663,12 +656,11 @@ void ppu_tick(PPU *ppu, CPU *cpu){
             }
             case MODE_VBLANK:{
                 set_stat_ppu_mode(ppu, 1);
+                if((read_memory_ppu(ppu, 0xFF41) & LCDSTAT_MODE_1)  && !ppu->stat_interrupt_set){
+                    ppu->stat_interrupt_set = true;
+                    set_interrupt(cpu, INT_LCD);
+                }
 
-                 if((read_memory_ppu(ppu, 0xFF41) & LCDSTAT_MODE_1)  && !ppu->stat_interrupt_set){
-                     ppu->stat_interrupt_set = true;
-                     set_interrupt(cpu, INT_LCD);
-                 }
-                count += 2;
                 ppu->cycles += 2;
                 if(ppu->cycles == 4)
                     set_interrupt(cpu, INT_VBLANK); 
@@ -679,7 +671,6 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                         set_LY(ppu, 0);
                         ppu->current_pos = 0;
                         ppu->window_line_counter = 0;
-                        count = 0;
                         
                         ppu->frame_ready = true;
                         ppu_render(ppu);

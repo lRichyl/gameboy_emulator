@@ -71,8 +71,8 @@ static u8 read_memory_cpu(CPU *cpu, u16 address){
     }
     else if(address == 0xFF00){
         u8 joy = cpu->memory->data[address];
-        joy |= 0xC0;
-        joy |= 0x0F; // This are modified with button or dpad presses. 1 means not pressed. TODO: Implement this.
+        // joy |= 0xC0;
+        // joy |= 0x0F; // This are modified with button or dpad presses. 1 means not pressed. TODO: Implement this.
         return joy;
     }
     else if(address >= 0xFE00 && address <= 0xFE9F && cpu->memory->is_oam_locked){ // OAM
@@ -103,6 +103,29 @@ static void write_memory_cpu(CPU *cpu, u16 address, u8 value){
     }
 
     cpu->memory->data[address] = value;
+}
+
+void update_joypad(CPU *cpu, const bool *input){
+    if(!(read_memory_cpu(cpu, 0xFF00) & 0x10)){ // Dpad selected.
+        u8 in = read_memory_cpu(cpu, 0xFF00); // All buttons released.
+        in |= 0x0F;
+        if(input[SDL_SCANCODE_DOWN])  in &= ~0x08;
+        if(input[SDL_SCANCODE_UP])    in &= ~0x04;
+        if(input[SDL_SCANCODE_LEFT])  in &= ~0x02;
+        if(input[SDL_SCANCODE_RIGHT]) in &= ~0x01; 
+
+        write_memory_cpu(cpu, 0xFF00, in);
+    }
+    else if(!(read_memory_cpu(cpu, 0xFF00) & 0x20)){ // Buttons selected.
+        u8 in = read_memory_cpu(cpu, 0xFF00); // All buttons released.
+        in |= 0x0F;
+        if(input[SDL_SCANCODE_RETURN]) in &= ~0x08;
+        if(input[SDL_SCANCODE_RSHIFT]) in &= ~0x04;
+        if(input[SDL_SCANCODE_X])      in &= ~0x02;
+        if(input[SDL_SCANCODE_Z])      in &= ~0x01; 
+
+        write_memory_cpu(cpu, 0xFF00, in);
+    }
 }
 
 u8 fetch(CPU *cpu){

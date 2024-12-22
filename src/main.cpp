@@ -30,6 +30,8 @@ int main(int argc, const char **argv){
         return 0;
     }
 
+    const bool *input = SDL_GetKeyboardState(NULL);
+
 	LARGE_INTEGER perf_count_frequency_result;
     QueryPerformanceFrequency(&perf_count_frequency_result);
     i64 perf_count_frequency = perf_count_frequency_result.QuadPart;
@@ -51,7 +53,7 @@ int main(int argc, const char **argv){
             }
         }
 
-        run_gameboy(&gmb, last_counter, perf_count_frequency);
+        run_gameboy(&gmb, last_counter, perf_count_frequency, input);
 
         SDL_RenderPresent(renderer);
 
