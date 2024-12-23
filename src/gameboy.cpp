@@ -13,16 +13,16 @@ void run_gameboy(Gameboy *gmb, LARGE_INTEGER starting_time, i64 perf_count_frequ
     PPU *ppu = &gmb->ppu;
     while(!ppu->frame_ready){
         // Handling interrupts
-        update_timers(cpu);
         if(cpu->fetched_next_instruction){
             handle_interrupts(cpu, ppu);
         }
 
         if(!cpu->handling_interrupt && !cpu->halt){
             run_cpu(cpu);
-            cpu->cycles_delta += 4;
         }
+        cpu->cycles_delta += 4;
 
+        update_timers(cpu);
         update_joypad(cpu, input);
 
         handle_DMA_transfer(cpu);

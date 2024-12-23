@@ -942,18 +942,15 @@ void run_cpu(CPU *cpu){
                 }
 
                 // TODO
-                // case 0x10:{ // STOP
-                //     immr8 = fetch(cpu);
-
-                //     cpu->opcode = fetch(cpu);
-                //     cpu->machine_cycle = 0;
-                //     break;
-                // }
+                 case 0x10:{ // STOP
+                     
+                     
+                     break;
+                 }
 
                 default:{
-                    printf("Opcode %X not implemented\n", cpu->opcode);
+                    //printf("Opcode %X not implemented\n", cpu->opcode);
                     print_cpu(cpu);
-                    assert(false);
                     break;
                 }
 
@@ -1369,6 +1366,7 @@ void run_cpu(CPU *cpu){
                     }
                     else if(cpu->machine_cycle == 5){
                         go_to_next_instruction(cpu);
+                        cpu->is_extended = cpu->was_extended;
                     }
 
                     break;
@@ -1390,6 +1388,7 @@ void run_cpu(CPU *cpu){
                     }
                     else if(cpu->machine_cycle == 5){
                         go_to_next_instruction(cpu);
+                        cpu->is_extended = cpu->was_extended;
                     }
 
                     break;
@@ -1411,6 +1410,7 @@ void run_cpu(CPU *cpu){
                     }
                     else if(cpu->machine_cycle == 5){
                         go_to_next_instruction(cpu);
+                        cpu->is_extended = cpu->was_extended;
                     }
 
                     break;
@@ -1432,6 +1432,7 @@ void run_cpu(CPU *cpu){
                     }
                     else if(cpu->machine_cycle == 5){
                         go_to_next_instruction(cpu);
+                        cpu->is_extended = cpu->was_extended;
                     }
 
                     break;
@@ -2547,41 +2548,40 @@ void handle_interrupts(CPU *cpu, PPU *ppu){
         u8 IE = read_memory_cpu(cpu, 0xFFFF);
         u8 IF = read_memory_cpu(cpu, 0xFF0F);
 
+        if((IE & IF)) {
+            cpu->halt = false;
+        }
+
         if(cpu->IME && !cpu->handling_interrupt){ // If interrupts are enabled.
             if((IE & INT_VBLANK) && (IF & INT_VBLANK)){
                 cpu->PC--;
                 unset_interrupt(cpu, INT_VBLANK);
                 cpu->interrupt = INT_VBLANK;
                 cpu->handling_interrupt = true;
-                cpu->halt = false;
             }
             else if((IE & INT_LCD) && (IF & INT_LCD)){
                 cpu->PC--;
                 unset_interrupt(cpu, INT_LCD);
                 cpu->interrupt = INT_LCD;
                 cpu->handling_interrupt = true;
-                cpu->halt = false;
             }
             else if((IE & INT_TIMER) && (IF & INT_TIMER)){
                 cpu->PC--;
                 unset_interrupt(cpu, INT_TIMER);
                 cpu->interrupt = INT_TIMER;
                 cpu->handling_interrupt = true;
-                cpu->halt = false;
             }
             else if((IE & INT_SERIAL) && (IF & INT_SERIAL)){
                 cpu->PC--;
                 unset_interrupt(cpu, INT_SERIAL);
                 cpu->interrupt = INT_TIMER;
                 cpu->handling_interrupt = true;
-                cpu->halt = false;
             }
             else if((IE & INT_JOYPAD) && (IF & INT_JOYPAD)){
                 cpu->PC--;
                 unset_interrupt(cpu, INT_JOYPAD);
                 cpu->interrupt = INT_JOYPAD;
                 cpu->handling_interrupt = true;
-                cpu->halt = false;
             }
         }
     }
@@ -2615,12 +2615,6 @@ void disable_interrupt(CPU *cpu, Interrupt interrupt){
     write_memory_cpu(cpu, 0xFF0F, IE);
 }
 
-static void increment_div(CPU *cpu){
-    u8 div = read_memory_cpu(cpu, 0xFF04);
-    div++;
-    write_memory_cpu(cpu, 0xFF04, div);
-}
-
 static void increment_tima(CPU *cpu){
     u8 tima = read_memory_cpu(cpu, 0xFF05);
     u8 previous_tima = tima;
@@ -2642,12 +2636,12 @@ void update_timers(CPU *cpu){
         u32 every = 0;
         switch (clock){
             case 0x00:{every = 256; break;}
-            case 0x01:{every = 4; break;}
-            case 0x02:{every = 16; break;}
-            case 0x03:{every = 64; break;}
+            case 0x01:{every = 4;   break;}
+            case 0x02:{every = 16;  break;}
+            case 0x03:{every = 64;  break;}
         }
 
-        if(cpu->cycles_delta % (every * 4) == 0){
+        if(cpu->cycles_delta % (every*4) == 0){
             increment_tima(cpu);
         }
         
