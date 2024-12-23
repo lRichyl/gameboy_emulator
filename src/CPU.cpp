@@ -143,8 +143,11 @@ void unset_flag(CPU *cpu, Flag flag){
     cpu->flags = cpu->flags & ~(flag);
 }
 
-u8 sum_and_set_flags(CPU *cpu, u8 summand_left, u8 summand_right, b32 check_carry = false, bool check_zero = false){
-    u16 result = (u16)summand_left + (u16)summand_right;
+static u8 sum_and_set_flags(CPU *cpu, u8 summand_left, u8 summand_right, bool add_carry = false, b32 check_carry = false, bool check_zero = false){
+    u8 carry;
+    add_carry ? carry = ((cpu->flags & FLAG_CARRY) >> 4) : carry = 0;
+
+    u16 result = (u16)summand_left + (u16)summand_right + carry;
     
     if(check_zero){
         if(u8(result) == 0)     
@@ -157,7 +160,7 @@ u8 sum_and_set_flags(CPU *cpu, u8 summand_left, u8 summand_right, b32 check_carr
 
     u8 nibble_left_summand     = summand_left    & 0x0F;
     u8 nibble_right_summand    = summand_right   & 0x0F;
-    if((nibble_left_summand + nibble_right_summand) > 0x0F) 
+    if((nibble_left_summand + nibble_right_summand + carry) > 0x0F) 
         set_flag(cpu, FLAG_HALFCARRY);
     else
         unset_flag(cpu, FLAG_HALFCARRY);
@@ -547,14 +550,14 @@ void run_cpu(CPU *cpu){
                         assert(reg <= 2);
 
                         u8 reg_low = ((*cpu->wide_register_map[reg]) & 0x00FF);
-                        cpu->L = sum_and_set_flags(cpu, cpu->L, reg_low, true, false);
+                        cpu->L = sum_and_set_flags(cpu, cpu->L, reg_low, false, true, false);
                     }
                     else if(cpu->machine_cycle == 2){
                         u8 reg = cpu->opcode & 0x30;
                         reg >>= 4;
                         u8 reg_high = ((*cpu->wide_register_map[reg]) & 0xFF00) >> 8;
                         u8 carry = (cpu->flags & FLAG_CARRY) >> 4;
-                        cpu->H =  sum_and_set_flags(cpu, cpu->H, reg_high + carry, true, false);
+                        cpu->H =  sum_and_set_flags(cpu, cpu->H, reg_high, true, true, false);
 
                         go_to_next_instruction(cpu);
                     }
@@ -565,12 +568,12 @@ void run_cpu(CPU *cpu){
                     
                     if(cpu->machine_cycle == 1){
                         u8 reg_low = ((cpu->SP) & 0x00FF);
-                        cpu->L = sum_and_set_flags(cpu, cpu->L, reg_low, true, false);
+                        cpu->L = sum_and_set_flags(cpu, cpu->L, reg_low, false, true, false);
                     }
                     else if(cpu->machine_cycle == 2){
                         u8 reg_high = ((cpu->SP) & 0xFF00) >> 8;
                         u8 carry = (cpu->flags & FLAG_CARRY) >> 4;
-                        cpu->H =  sum_and_set_flags(cpu, cpu->H, reg_high + carry, true, false);
+                        cpu->H =  sum_and_set_flags(cpu, cpu->H, reg_high, true, true, false);
 
                         go_to_next_instruction(cpu);
                     }
@@ -589,9 +592,9 @@ void run_cpu(CPU *cpu){
                     assert(reg <= 7);
 
                     if(reg < 6)
-                        (*cpu->register_map[reg]) = sum_and_set_flags(cpu, (*cpu->register_map[reg]), 1, false, true);
+                        (*cpu->register_map[reg]) = sum_and_set_flags(cpu, (*cpu->register_map[reg]), 1, false, false, true);
                     else if(reg == 7){
-                        cpu->A = sum_and_set_flags(cpu, cpu->A, 1, false, true);
+                        cpu->A = sum_and_set_flags(cpu, cpu->A, 1, false, false, true);
                     }
 
                     go_to_next_instruction(cpu);
@@ -605,7 +608,7 @@ void run_cpu(CPU *cpu){
                         mem_value = read_memory_cpu(cpu, cpu->HL);
                     }
                     else if(cpu->machine_cycle == 2){
-                        mem_value = sum_and_set_flags(cpu, mem_value, 1, false, true);
+                        mem_value = sum_and_set_flags(cpu, mem_value, 1, false, false, true);
                         write_memory_cpu(cpu, cpu->HL, mem_value);
                     }
                     else if(cpu->machine_cycle == 3){
@@ -1001,7 +1004,7 @@ void run_cpu(CPU *cpu){
                         assert(reg <= 7 && reg >= 0);
 
                         if(reg != 6){
-                            cpu->A = sum_and_set_flags(cpu, cpu->A, *cpu->register_map[reg], true, true);
+                            cpu->A = sum_and_set_flags(cpu, cpu->A, *cpu->register_map[reg], false, true, true);
                             go_to_next_instruction(cpu);
                         }
                         else if (reg == 6){ // ADD A, [HL]
@@ -1011,7 +1014,7 @@ void run_cpu(CPU *cpu){
                     }
                     else if(cpu->machine_cycle == 2){
                         // ADD A, [HL]
-                        cpu->A = sum_and_set_flags(cpu, cpu->A, mem_value, true, true);
+                        cpu->A = sum_and_set_flags(cpu, cpu->A, mem_value, false, true, true);
                         
                         go_to_next_instruction(cpu);
                     }
@@ -1237,7 +1240,7 @@ void run_cpu(CPU *cpu){
                         immr8 = fetch(cpu);
                     }
                     else if(cpu->machine_cycle == 2){
-                        cpu->A = sum_and_set_flags(cpu, cpu->A, immr8, true, true);     
+                        cpu->A = sum_and_set_flags(cpu, cpu->A, immr8, false, true, true);     
                         go_to_next_instruction(cpu);
                     }
 
@@ -1902,7 +1905,7 @@ void run_cpu(CPU *cpu){
                         // sign = immr8 & 0x80;
                     }
                     else if(cpu->machine_cycle == 2){
-                        sum_and_set_flags(cpu, cpu->SPL, immr8, true, true);
+                        sum_and_set_flags(cpu, cpu->SPL, immr8, false, true);
                     }
                     else if(cpu->machine_cycle == 3){
                         
@@ -1916,6 +1919,8 @@ void run_cpu(CPU *cpu){
                         // mem_value = cpu->SPH + adj + ((cpu->flags & FLAG_CARRY) >> 4);   
                     }
                     else if(cpu->machine_cycle == 4){
+                        unset_flag(cpu, FLAG_ZERO);
+
                         i8 imm8s = (i8)immr8;
                         cpu->SP += imm8s;
                         go_to_next_instruction(cpu);
@@ -1928,9 +1933,11 @@ void run_cpu(CPU *cpu){
                         immr8 = fetch(cpu);
                     }
                     else if(cpu->machine_cycle == 2){
-                        sum_and_set_flags(cpu, cpu->SPL, immr8 + cpu->SPL, true, true);
+                        sum_and_set_flags(cpu, cpu->SPL, immr8, false, true);
                     }
                     else if(cpu->machine_cycle == 3){
+                        unset_flag(cpu, FLAG_ZERO);
+
                         i8 imm8s = (i8)immr8;
                         cpu->HL = cpu->SP + imm8s;
                         go_to_next_instruction(cpu);
@@ -2247,7 +2254,6 @@ void run_cpu(CPU *cpu){
                                 u8 bit_7 = *(cpu->register_map[reg]) & 0x80;
                                 *(cpu->register_map[reg]) >>= 1;
                                 *(cpu->register_map[reg]) |= bit_7;
-                                // *(cpu->register_map[reg]) &= ~(0x40);
 
                                 if(*(cpu->register_map[reg]) == 0)
                                     set_flag(cpu, FLAG_ZERO);

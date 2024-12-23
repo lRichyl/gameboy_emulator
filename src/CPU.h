@@ -117,7 +117,7 @@ void set_flag(CPU *cpu, Flag flag);
 void unset_flag(CPU *cpu, Flag flag);
 u8 pop_stack(CPU *cpu);
 u8 push_stack(CPU *cpu, u8 value);
-u8 sum_and_set_flags(CPU *cpu, u8 summand_left, u8 summand_right, b32 check_carry, bool check_zero);
+// u8 sum_and_set_flags(CPU *cpu, u8 summand_left, u8 summand_right, b32 check_carry, bool check_zero);
 
 void handle_DMA_transfer(CPU *cpu);
 void handle_interrupts(CPU *cpu, PPU *ppu);
