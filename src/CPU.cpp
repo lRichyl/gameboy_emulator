@@ -55,11 +55,11 @@ void init_cpu(CPU *cpu, Memory *memory){
     cpu->HL = 0x014D;
     cpu->SP = 0xFFFE;
 
-    /*fopen_s(&cpu->fp, "Log" , "w" );
+    fopen_s(&cpu->fp, "Log" , "w" );
 	if( !cpu->fp ){
 		printf("File could not be opened\n" );
         assert(false)
-    }*/
+    }
 }
 
 static u8 read_memory_cpu(CPU *cpu, u16 address){
@@ -282,7 +282,7 @@ static void print_cpu(CPU *cpu){
     u8 STAT     = read_memory_cpu(cpu, 0xFF41);
 
     fprintf(cpu->fp,"PC: \t%X\n", cpu->PC);
-    fprintf(cpu->fp,"IME: \t%d\n", cpu->IME);
+    fprintf(cpu->fp,"IME: \t%X\n", cpu->IME);
     fprintf(cpu->fp,"Opcode: \t%X\n", cpu->opcode);
     fprintf(cpu->fp,"Cycles: \t%d\n", cpu->cycles_delta);
     fprintf(cpu->fp,"DIV: \t%X  Internal counter: %X\n", DIV, cpu->internal_counter);
@@ -296,16 +296,16 @@ static void print_cpu(CPU *cpu){
 
 static void go_to_next_instruction(CPU *cpu){
     //print_cpu(cpu);
-    if(cpu->opcode != 0xFB && cpu->scheduled_ei){
-        cpu->IME = true;
-        cpu->scheduled_ei = false;
-    }
 
     //assert(cpu->PC != 0x904);
     cpu->opcode = fetch(cpu);
     cpu->machine_cycle = 0; 
     cpu->fetched_next_instruction = true;
     
+    if(cpu->opcode != 0xFB && cpu->scheduled_ei){
+        cpu->IME = true;
+        cpu->scheduled_ei = false;
+    }
 }
 
 
@@ -335,6 +335,7 @@ void run_cpu(CPU *cpu){
     }
     cpu->machine_cycle++;
     if(!cpu->is_extended){
+        cpu->was_extended = false;
         switch(cpu->opcode & 0xC0){
         case 0x00:{
             switch(cpu->opcode){
@@ -1464,7 +1465,7 @@ void run_cpu(CPU *cpu){
                     else if(cpu->machine_cycle == 3){
                         imm = (imm_high << 8) | (imm_low);
                         cpu->PC = imm;
-                        cpu->IME = true;
+                        cpu->scheduled_ei = true;
                     }
                     else if(cpu->machine_cycle == 4){
                         go_to_next_instruction(cpu);

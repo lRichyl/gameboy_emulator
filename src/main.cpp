@@ -65,7 +65,7 @@ int main(int argc, const char **argv){
         
     }
 
-    //fclose(gmb.cpu.fp);
+    fclose(gmb.cpu.fp);
     SDL_DestroyWindow(window);
     SDL_DestroyRenderer(renderer);
     SDL_Quit();
