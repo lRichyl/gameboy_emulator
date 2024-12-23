@@ -289,8 +289,8 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                 break;
             }
             case MODE_DRAW:{
-                ppu->memory->is_vram_locked = true;
                 set_stat_ppu_mode(ppu, 3);
+                ppu->memory->is_vram_locked = true;
                 switch(ppu->tile_fetch_state){
                     case TILE_FETCH_TILE_INDEX:{
                         u32 offset;
@@ -647,6 +647,7 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                         ppu->mode = MODE_VBLANK;
                         ppu->LY_equals_WY = false;
                         ppu->render_window = false;
+                        set_interrupt(cpu, INT_VBLANK); 
                     }
 
                     ppu->do_dummy_fetch = true;
@@ -662,8 +663,6 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                 }
 
                 ppu->cycles += 2;
-                if(ppu->cycles == 4)
-                    set_interrupt(cpu, INT_VBLANK); 
                 if(ppu->cycles == 456){
                     if(get_LY(ppu) == 153){
                         ppu->mode = MODE_OAM_SCAN;
@@ -693,10 +692,10 @@ void ppu_tick(PPU *ppu, CPU *cpu){
     else{
         if(!once) return;
         ppu->current_oam_address = ppu->oam_initial_address;
-        ppu->memory->is_oam_locked  = false;
+        ppu->memory->is_oam_locked  = true;
         ppu->memory->is_vram_locked = false;
         ppu->mode = MODE_OAM_SCAN;
-        // set_stat_ppu_mode(ppu, 2);
+        set_stat_ppu_mode(ppu, 0);
         ppu->tile_x = 0;
         ppu->current_pos = 0;
 
