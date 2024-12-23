@@ -59,7 +59,7 @@ void init_cpu(CPU *cpu, Memory *memory){
 	if( !cpu->fp ){
 		printf("File could not be opened\n" );
         assert(false)
-	}
+    }
 }
 
 static u8 read_memory_cpu(CPU *cpu, u16 address){
@@ -70,10 +70,7 @@ static u8 read_memory_cpu(CPU *cpu, u16 address){
         return 0xFF;
     }
     else if(address == 0xFF00){
-        u8 joy = cpu->memory->data[address];
-        // joy |= 0xC0;
-        // joy |= 0x0F; // This are modified with button or dpad presses. 1 means not pressed. TODO: Implement this.
-        return joy;
+        return cpu->memory->data[address];
     }
     else if(address >= 0xFE00 && address <= 0xFE9F && cpu->memory->is_oam_locked){ // OAM
         return 0xFF;
@@ -765,19 +762,24 @@ void run_cpu(CPU *cpu){
                 }
 
                 case 0x27:{ // DAA
-                    if((cpu->A & 0x0F) > 9 || cpu->flags & FLAG_HALFCARRY){
-                        cpu->A += 6;
+                    if (!(cpu->flags & FLAG_SUB)) {  // after an addition, adjust if (half-)carry occurred or if result is out of bounds
+                        if (cpu->flags & FLAG_CARRY || cpu->A > 0x99) { 
+                            cpu->A += 0x60;
+                            set_flag(cpu, FLAG_CARRY);
+                        }
+                        if((cpu->A & 0x0F) > 9 || cpu->flags & FLAG_HALFCARRY){
+                            cpu->A += 6;
+                        }
+                    } else {  // after a subtraction, only adjust if (half-)carry occurred
+                        if (cpu->flags & FLAG_CARRY){
+                            cpu->A -= 0x60; 
+                        }
+                        if (cpu->flags & FLAG_HALFCARRY){ 
+                            cpu->A -= 0x6; 
+                        }
                     }
 
                     unset_flag(cpu, FLAG_HALFCARRY);
-
-                    if(cpu->A > 0x99 || cpu->flags & FLAG_CARRY) {
-                        cpu->A += 0x60;
-                        set_flag(cpu, FLAG_CARRY);
-                    }
-                    else{
-                        unset_flag(cpu, FLAG_CARRY);
-                    }
 
                     if(cpu->A == 0)     
                         set_flag(cpu, FLAG_ZERO);
@@ -1772,6 +1774,9 @@ void run_cpu(CPU *cpu){
                     else if(cpu->machine_cycle == 3){
                         u8 target = (cpu->opcode & 0x30) >> 4;
                         *(cpu->wide_register_map[target]) = (imm_high << 8) | imm_low;
+                        if(cpu->opcode == 0xF1){
+                            *(cpu->wide_register_map[target]) &= 0xFFF0;
+                        }
                         go_to_next_instruction(cpu);
                     }
 
@@ -2278,7 +2283,6 @@ void run_cpu(CPU *cpu){
                             u8 bit_7 = mem_value & 0x80;
                             mem_value >>= 1;
                             mem_value |= bit_7;
-                            mem_value &= ~(0x40);
 
                             if(mem_value == 0)
                                 set_flag(cpu, FLAG_ZERO);
@@ -2404,7 +2408,7 @@ void run_cpu(CPU *cpu){
                         break;
                     }
                 }
-                
+                break;
             }
 
             case 0x40:{ // Bit instructions
