@@ -55,11 +55,11 @@ void init_cpu(CPU *cpu, Memory *memory){
     cpu->HL = 0x014D;
     cpu->SP = 0xFFFE;
 
-    fopen_s(&cpu->fp, "Log" , "w" );
+    /*fopen_s(&cpu->fp, "Log" , "w" );
 	if( !cpu->fp ){
 		printf("File could not be opened\n" );
         assert(false)
-    }
+    }*/
 }
 
 static u8 read_memory_cpu(CPU *cpu, u16 address){
@@ -950,7 +950,6 @@ void run_cpu(CPU *cpu){
 
                 default:{
                     //printf("Opcode %X not implemented\n", cpu->opcode);
-                    print_cpu(cpu);
                     break;
                 }
 
@@ -1223,7 +1222,6 @@ void run_cpu(CPU *cpu){
 
                 default:{
                     printf("Opcode %X not implemented\n", cpu->opcode);
-                    print_cpu(cpu);
                     assert(false);
                     break;
                 }
@@ -1977,7 +1975,6 @@ void run_cpu(CPU *cpu){
                 
                 default:{
                     printf("Opcode %X not implemented\n", cpu->opcode);
-                    print_cpu(cpu);
                     assert(false);
                     break;
                 }
@@ -1990,7 +1987,6 @@ void run_cpu(CPU *cpu){
 
         default:{
             printf("Opcode %X not implemented\n", cpu->opcode);
-            print_cpu(cpu);
             assert(false);
             break;
         }
@@ -2404,7 +2400,6 @@ void run_cpu(CPU *cpu){
                     }
                     default:{
                         printf("Opcode %X not implemented\n", cpu->opcode);
-                        print_cpu(cpu);
                         assert(false);
                         break;
                     }
@@ -2520,7 +2515,6 @@ void handle_interrupts(CPU *cpu, PPU *ppu){
 
         }
         else if(cycle == 2){
-            
             push_stack(cpu, cpu->PCH);
         }
         else if(cycle == 3){

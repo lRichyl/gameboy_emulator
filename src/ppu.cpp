@@ -290,7 +290,7 @@ void ppu_tick(PPU *ppu, CPU *cpu){
             }
             case MODE_DRAW:{
                 set_stat_ppu_mode(ppu, 3);
-                ppu->memory->is_vram_locked = true;
+                // ppu->memory->is_vram_locked = true;
                 switch(ppu->tile_fetch_state){
                     case TILE_FETCH_TILE_INDEX:{
                         u32 offset;
