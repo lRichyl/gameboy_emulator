@@ -335,7 +335,7 @@ void run_cpu(CPU *cpu){
     }
     cpu->machine_cycle++;
     if(!cpu->is_extended){
-        cpu->was_extended = false;
+        //cpu->was_extended = false;
         switch(cpu->opcode & 0xC0){
         case 0x00:{
             switch(cpu->opcode){
@@ -950,7 +950,8 @@ void run_cpu(CPU *cpu){
                  }
 
                 default:{
-                    //printf("Opcode %X not implemented\n", cpu->opcode);
+                    printf("Opcode %X not implemented\n", cpu->opcode);
+                    assert(false);
                     break;
                 }
 
@@ -1366,6 +1367,7 @@ void run_cpu(CPU *cpu){
                     else if(cpu->machine_cycle == 5){
                         go_to_next_instruction(cpu);
                         cpu->is_extended = cpu->was_extended;
+                        cpu->was_extended = false;
                     }
 
                     break;
@@ -1388,6 +1390,7 @@ void run_cpu(CPU *cpu){
                     else if(cpu->machine_cycle == 5){
                         go_to_next_instruction(cpu);
                         cpu->is_extended = cpu->was_extended;
+                        cpu->was_extended = false;
                     }
 
                     break;
@@ -1410,6 +1413,7 @@ void run_cpu(CPU *cpu){
                     else if(cpu->machine_cycle == 5){
                         go_to_next_instruction(cpu);
                         cpu->is_extended = cpu->was_extended;
+                        cpu->was_extended = false;
                     }
 
                     break;
@@ -1432,6 +1436,7 @@ void run_cpu(CPU *cpu){
                     else if(cpu->machine_cycle == 5){
                         go_to_next_instruction(cpu);
                         cpu->is_extended = cpu->was_extended;
+                        cpu->was_extended = false;
                     }
 
                     break;
@@ -1470,6 +1475,7 @@ void run_cpu(CPU *cpu){
                     else if(cpu->machine_cycle == 4){
                         go_to_next_instruction(cpu);
                         cpu->is_extended = cpu->was_extended;
+                        cpu->was_extended = false;
                     }
 
                     break;

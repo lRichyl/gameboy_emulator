@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "gameboy.h"
+#include "arena.h"
 
 #include "SDL3/SDL.h"
 
@@ -39,8 +40,9 @@ int main(int argc, const char **argv){
     LARGE_INTEGER last_counter;
     QueryPerformanceCounter(&last_counter);
 
-	Gameboy gmb = {};
-	init_gameboy(&gmb, renderer, argv[1]); // First argument is the rom path.
+    init_global_arena(megabytes(2));
+	Gameboy *gmb = (Gameboy*)alloc(sizeof(Gameboy));
+	init_gameboy(gmb, renderer, argv[1]); // First argument is the rom path.
 
 	b32 is_running = true;
     while (is_running) { // Main loop
@@ -53,7 +55,7 @@ int main(int argc, const char **argv){
             }
         }
 
-        run_gameboy(&gmb, last_counter, perf_count_frequency, input);
+        run_gameboy(gmb, last_counter, perf_count_frequency, input);
 
         SDL_RenderPresent(renderer);
 
@@ -65,7 +67,7 @@ int main(int argc, const char **argv){
         
     }
 
-    fclose(gmb.cpu.fp);
+    fclose(gmb->cpu.fp);
     SDL_DestroyWindow(window);
     SDL_DestroyRenderer(renderer);
     SDL_Quit();
