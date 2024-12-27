@@ -5,3 +5,4 @@ Legend of Zelda.gb
 *.gb
 *.sav
 Log
+.vscode/settings.json

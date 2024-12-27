@@ -40,7 +40,7 @@ int main(int argc, const char **argv){
     LARGE_INTEGER last_counter;
     QueryPerformanceCounter(&last_counter);
 
-    init_global_arena(megabytes(2));
+    init_global_arena(megabytes(5));
 	Gameboy *gmb = (Gameboy*)alloc(sizeof(Gameboy));
 	init_gameboy(gmb, renderer, argv[1]); // First argument is the rom path.
 
@@ -71,6 +71,8 @@ int main(int argc, const char **argv){
     SDL_DestroyWindow(window);
     SDL_DestroyRenderer(renderer);
     SDL_Quit();
+
+    free_global_arena();
 
 	return 0;
 }

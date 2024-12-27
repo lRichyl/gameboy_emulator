@@ -31,6 +31,7 @@ void init_cpu(CPU *cpu, Memory *memory){
     cpu->is_extended = false;
     cpu->handling_interrupt = false;
     cpu->fetched_next_instruction = false;
+    cpu->halt = false;
 
     cpu->PC = 0x0100; // Temporary
     cpu->internal_counter = 0xABCC;

@@ -14,6 +14,7 @@ extern Arena global_arena;
 
 void init_global_arena(unsigned int size);
 void* alloc(unsigned int size);
+void free_global_arena();
 
 void init_arena(Arena *arena, unsigned int size);
 void* alloc(Arena *arena, unsigned int size);

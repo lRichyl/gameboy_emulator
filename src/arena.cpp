@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include "arena.h"
 
 
@@ -14,10 +15,19 @@ void* alloc(unsigned int size){
     return alloc(&global_arena,  size);
 }
 
+void free_global_arena(){
+    assert(global_arena.initialized);
+    global_arena.start = global_arena.current = NULL;
+    global_arena.size = 0;
+    global_arena.occupied = 0;
+    free(global_arena.start);
+}
+
 // Initialize the arena
 void init_arena(Arena *arena, unsigned int size) {
     arena->initialized = true;
     arena->start = (char*)malloc(size);
+    memset(arena->start, 0, size);
     arena->current = arena->start;
     arena->size = size;
     arena->occupied = 0;
