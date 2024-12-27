@@ -60,6 +60,7 @@ int main(int argc, const char **argv){
         SDL_RenderPresent(renderer);
 
         LARGE_INTEGER end_counter;
+
         QueryPerformanceCounter(&end_counter);
 
         last_counter = end_counter;

@@ -64,8 +64,14 @@ void init_cpu(CPU *cpu, Memory *memory){
 }
 
 static u8 read_memory_cpu(CPU *cpu, u16 address){
-    if(address >= 0x8000 && address <= 0x9FFF && cpu->memory->is_vram_locked){ // VRAM
-            return 0xFF;
+    if(address >= 0x0000 && address <= 0x7FFF){
+        return read_from_MBC(cpu->memory, address);
+    }
+    else if(address >= 0x8000 && address <= 0x9FFF && cpu->memory->is_vram_locked){ // VRAM
+        return 0xFF;
+    }
+    else if(address >= 0xA000 && address <= 0xBFFF){ // External RAM
+        return read_ram_from_MBC(cpu->memory, address); 
     }
     else if(address >= 0xFE00 && address <= 0xFE9F && cpu->memory->is_oam_locked){ // OAM
         return 0xFF;
@@ -87,6 +93,11 @@ static void write_memory_cpu(CPU *cpu, u16 address, u8 value){
         return;
     }
     else if(address >= 0x0000 && address <= 0x7FFF){ // ROM
+        set_MBC_registers(cpu->memory, address, value);
+        return;
+    }
+    else if(address >= 0xA000 && address <= 0xBFFF){ // External RAM
+        write_to_mbc_RAM(cpu->memory, address, value);
         return;
     }
     else if(address == 0xFF04){
@@ -296,9 +307,9 @@ static void print_cpu(CPU *cpu){
 
 
 static void go_to_next_instruction(CPU *cpu){
-    //print_cpu(cpu);
+    print_cpu(cpu);
 
-    //assert(cpu->PC != 0x904);
+    assert(cpu->PC != 0x39);
     cpu->opcode = fetch(cpu);
     cpu->machine_cycle = 0; 
     cpu->fetched_next_instruction = true;
