@@ -49,6 +49,12 @@ enum SpriteAttributes{
     ATTRIBUTE_PRIORITY = 0x80
 };
 
+enum FIFOState{
+    FIFO_DUMMY,
+    FIFO_PUSH,
+    FIFO_SCROLL,
+};
+
 struct Sprite{
     u8 y_position;
     u8 x_position;
@@ -81,6 +87,8 @@ struct PPU{
 
     PPUMode mode;
     TileFetchState tile_fetch_state;
+    FIFOState fifo_state;
+
     Memory *memory;
     Array<Sprite> sprites;
     Array<Sprite> sprites_active;
@@ -113,6 +121,10 @@ struct PPU{
     bool LY_equals_WY;
     u8 window_tile_x;
     u8 window_line_counter;
+
+    bool pop_for_scroll;
+    u8 scroll_count;
+    u8 scroll_amount;
 
     u8 sprites_processed;
     Sprite sprite;

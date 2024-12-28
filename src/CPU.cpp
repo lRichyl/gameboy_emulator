@@ -307,7 +307,7 @@ static void print_cpu(CPU *cpu){
 
 
 static void go_to_next_instruction(CPU *cpu){
-    print_cpu(cpu);
+    //print_cpu(cpu);
 
     assert(cpu->PC != 0x39);
     cpu->opcode = fetch(cpu);

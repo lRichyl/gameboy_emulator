@@ -71,8 +71,11 @@ void init_ppu(PPU *ppu, Memory *memory, SDL_Renderer *renderer){
     assert(ppu->framebuffer);
 
     ppu->memory = memory;
+
     ppu->mode = MODE_OAM_SCAN;
     ppu->tile_fetch_state = TILE_FETCH_TILE_INDEX;
+    ppu->fifo_state = FIFO_DUMMY;
+
     ppu->sprites_processed = 0;
     ppu->sprites        = make_array<Sprite>(40);
     ppu->sprites_active = make_array<Sprite>(10);
@@ -96,6 +99,9 @@ void init_ppu(PPU *ppu, Memory *memory, SDL_Renderer *renderer){
     ppu->stop_fifos = false;
     ppu->fetching_sprite = false;
     ppu->check_sprites = true;
+    ppu->pop_for_scroll = false;
+    ppu->scroll_count = 0;
+
     set_stat_ppu_mode(ppu, 2);
 }
 
@@ -116,7 +122,7 @@ static void check_if_sprite_is_in_current_position(PPU *ppu){
     if(ppu->check_sprites){
         for(int i = 0; i < ppu->sprites.size; i++){
             Sprite sprite = array_get(&ppu->sprites, i);
-            i32 sprite_x_corrected = sprite.x_position - 8;
+            i32 sprite_x_corrected = sprite.x_position - 8 /*+ (get_SCX(ppu) % 8)*/;
             if(sprite_x_corrected >= 0){
                 if(sprite_x_corrected == ppu->pixel_count){
                     array_add(&ppu->sprites_active, sprite);
@@ -140,65 +146,102 @@ static void check_if_sprite_is_in_current_position(PPU *ppu){
     }
 }
 
+
+// 
+
 static void push_to_screen(PPU *ppu){
+    
+
+    if(ppu->pixel_count >= 160) return;
     if(ppu->bg_fifo.size == 0) return;
     if(ppu->stop_fifos) return;
 
-    Pixel bg_pixel = array_pop(&ppu->bg_fifo);
-    u16 bg_palette_address = 0xFF47;
-    u8 palette = read_memory_ppu(ppu, bg_palette_address);
-    u8 bg_color_ids[4] = {(palette & 0x3), ((palette & 0xC) >> 2), ((palette & 0x30) >> 4), ((palette & 0xC0) >> 6)};
-
-    Color color;
-    if(ppu->sprite_fifo.size > 0 && (!ppu->skip_fifo)){
-        Pixel sp_pixel = array_pop(&ppu->sprite_fifo);
-        if(sp_pixel.color == 0 || (sp_pixel.bg_priority && bg_pixel.color != 0)){
-
-            color = ppu->colors[bg_color_ids[bg_pixel.color]];
-            // if(ppu->render_window){
-            //     color = {255,0,0};
-            // }
-        }
-        else{
-            u16 address;
-            sp_pixel.palette == 0 ? address = 0xFF48 : address = 0xFF49; 
-            u8 palette = read_memory_ppu(ppu, address);
-
-            u8 color_ids[4] = {0, ((palette & 0xC) >> 2), ((palette & 0x30) >> 4), ((palette & 0xC0) >> 6)};
-
-            color = ppu->colors[color_ids[sp_pixel.color]];
-            // color = {255,0,0};
-        }
-    }
-    else{
-        color = ppu->colors[bg_color_ids[bg_pixel.color]];
-        // if(ppu->render_window){
-        //     color = {255,0,0};
-        // }
-    }
-
-    u32 offset = 3;
-    if(!ppu->skip_fifo){
-        ppu->pixel_count++;
-        ppu->buffer[ppu->current_pos] = color.r;
-        ppu->buffer[ppu->current_pos + 1] = color.g;
-        ppu->buffer[ppu->current_pos + 2] = color.b;
-        ppu->current_pos += offset;
-
+    switch(ppu->fifo_state){
+        case FIFO_DUMMY:{
+            array_pop(&ppu->bg_fifo);
+            if(ppu->sprite_fifo.size > 0)
+                array_pop(&ppu->sprite_fifo);
         
-        ppu->check_sprites = true;
-        
-        // Window
-        if(ppu->LY_equals_WY && ((get_WX(ppu)-7) == ppu->pixel_count) && (read_lcdc(ppu) & LCDC_WINDOW_ENABLE)){
-            ppu->render_window = true;
-            ppu->tile_fetch_state = TILE_FETCH_TILE_INDEX;
-            array_clear(&ppu->bg_fifo);
+            if(ppu->bg_fifo.size == 0) {
+                ppu->fifo_state = FIFO_PUSH;
+                // if(ppu->pop_for_scroll){
+                //     ppu->fifo_state = FIFO_SCROLL;
+                //     ppu->pop_for_scroll = false;
+                // } 
+
+            }
+            break;
+        }
+
+        case FIFO_SCROLL:{
+            if(!ppu->LY_equals_WY)
+                array_pop(&ppu->bg_fifo);
+            if(ppu->sprite_fifo.size > 0)
+                array_pop(&ppu->sprite_fifo);
+
+            ppu->scroll_count++;
+            if(ppu->scroll_count == ppu->scroll_amount){
+                ppu->fifo_state = FIFO_PUSH;
+            } 
+            break;
+        }
+
+        case FIFO_PUSH:{
+            u32 offset = 3;
+            Pixel bg_pixel = array_pop(&ppu->bg_fifo);
+            u16 bg_palette_address = 0xFF47;
+            u8 palette = read_memory_ppu(ppu, bg_palette_address);
+            u8 bg_color_ids[4] = {(palette & 0x3), ((palette & 0xC) >> 2), ((palette & 0x30) >> 4), ((palette & 0xC0) >> 6)};
+
+            Color color;
+            if(ppu->sprite_fifo.size > 0 ){
+                Pixel sp_pixel = array_pop(&ppu->sprite_fifo);
+                if(sp_pixel.color == 0 || (sp_pixel.bg_priority && bg_pixel.color != 0)){
+
+                    color = ppu->colors[bg_color_ids[bg_pixel.color]];
+                    // if(ppu->render_window){
+                    //     color = {255,0,0};
+                    // }
+                }
+                else{
+                    u16 address;
+                    sp_pixel.palette == 0 ? address = 0xFF48 : address = 0xFF49; 
+                    u8 palette = read_memory_ppu(ppu, address);
+
+                    u8 color_ids[4] = {0, ((palette & 0xC) >> 2), ((palette & 0x30) >> 4), ((palette & 0xC0) >> 6)};
+
+                    color = ppu->colors[color_ids[sp_pixel.color]];
+                    // color = {255,0,0};
+                }
+            }
+            else{
+                color = ppu->colors[bg_color_ids[bg_pixel.color]];
+                // if(ppu->render_window){
+                //     color = {255,0,0};
+                // }
+            }
+
+            
+
+            ppu->pixel_count++;
+            ppu->buffer[ppu->current_pos] = color.r;
+            ppu->buffer[ppu->current_pos + 1] = color.g;
+            ppu->buffer[ppu->current_pos + 2] = color.b;
+            ppu->current_pos += offset;
+
+
+            
+            ppu->check_sprites = true;
+            
+            // Window
+            if(ppu->LY_equals_WY && ((get_WX(ppu)-7) == ppu->pixel_count) && (read_lcdc(ppu) & LCDC_WINDOW_ENABLE)){
+                ppu->render_window = true;
+                ppu->tile_fetch_state = TILE_FETCH_TILE_INDEX;
+                array_clear(&ppu->bg_fifo);
+            }
+            break;
         }
     }
-
-    
-
-    if(ppu->bg_fifo.size == 0) ppu->skip_fifo = false;
     
 }
 
@@ -285,6 +328,9 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                     ppu->mode = MODE_DRAW;
                     ppu->current_oam_address = ppu->oam_initial_address;
                     sort_objects_by_x_position(&ppu->sprites);
+
+                    ppu->scroll_amount = get_SCX(ppu) % 8;
+                    if(ppu->scroll_amount > 0) ppu->pop_for_scroll = true;
                 }
                 break;
             }
@@ -378,7 +424,7 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                             ppu->tile_high = 0x00;
                         }
 
-                        if(ppu->bg_fifo.size == 0 && !(read_lcdc(ppu) & LCDC_BG_WIN_ENABLE)){ // Background FIFO is empty so we can push a row of pixels.
+                        if(ppu->bg_fifo.size == 0 ){ // Background FIFO is empty so we can push a row of pixels.
                             for(int i = 0; i < 8; i++){
                                 Pixel pixel;
                                 u8 color_low  = (ppu->tile_low  >> i) & 0x1;
@@ -410,6 +456,12 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                                 pixel.color   = (color_high << 1) | color_low;
                                 array_add(&ppu->bg_fifo, pixel);
                             }
+
+                            if(ppu->pop_for_scroll){
+                                ppu->bg_fifo.size -= ppu->scroll_amount + 1;
+                                ppu->pop_for_scroll = false;
+                            }
+
                             ppu->tile_fetch_state =  TILE_FETCH_TILE_INDEX;
                             ppu->tile_x++;
                             if(ppu->render_window && (read_lcdc(ppu) & LCDC_WINDOW_ENABLE)) ppu->window_tile_x++;
@@ -610,6 +662,7 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                     array_clear(&ppu->sprite_fifo);
                     ppu->mode = MODE_HBLANK;
                     ppu->tile_fetch_state = TILE_FETCH_TILE_INDEX;
+                    ppu->fifo_state = FIFO_DUMMY;
                         
                     ppu->memory->is_vram_locked = false;
                     ppu->memory->is_oam_locked  = false;
@@ -627,6 +680,7 @@ void ppu_tick(PPU *ppu, CPU *cpu){
                     ppu->render_window = false;
                     ppu->window_tile_x = 0;
 
+                    ppu->scroll_count = 0;
                 }
                 break;
             }
