@@ -123,6 +123,9 @@ void set_MBC_registers(Memory *memory, u16 address, u8 value){
 
 u8 read_from_MBC(Memory *memory, u16 address){
     switch(memory->mbc.type){
+        case MBC_NONE:{
+            return memory->data[address];
+        }
         case MBC_ONE:
         case MBC_ONE_RAM:
         case MBC_ONE_RAM_BATTERY:{
@@ -133,20 +136,12 @@ u8 read_from_MBC(Memory *memory, u16 address){
             else if(address >= 0x4000 && address <= 0x7FFF){
                 return mbc->one.rom_banks[mbc->ROM_bank_number - 1][address - 0x4000];
             }
-            else if(address >= 0xA000 && address <= 0xBFFF){
-                if(mbc->RAM_enable){
-                    return mbc->one.ram_banks[mbc->RAM_bank_number][address - 0xA000];
-                }
-                else{
-                    return memory->data[address];
-                }
-            }
 
             break;
         }
 
         default:
-            printf("Mapper type does not support banking\n");
+            printf("Mapper type does not support rom banking\n");
     }
 }
 
@@ -164,7 +159,7 @@ void write_to_mbc_RAM(Memory *memory, u16 address, u8 value){
         }
 
         default:
-            printf("Mapper type does not support banking\n");
+            printf("Mapper type does not support ram banking write\n");
     }
 }
 
@@ -185,6 +180,6 @@ u8 read_ram_from_MBC(Memory *memory, u16 address){
         }
 
         default:
-            printf("Mapper type does not support banking\n");
+            printf("Mapper type does not support ram banking read\n");
     }
 }

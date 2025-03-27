@@ -154,7 +154,6 @@ static void push_to_screen(PPU *ppu){
 
     if(ppu->pixel_count >= 160) return;
     if(ppu->bg_fifo.size == 0) return;
-    if(ppu->stop_fifos) return;
 
     switch(ppu->fifo_state){
         case FIFO_DUMMY:{
@@ -187,6 +186,7 @@ static void push_to_screen(PPU *ppu){
         }
 
         case FIFO_PUSH:{
+            if(ppu->stop_fifos) return;
             u32 offset = 3;
             Pixel bg_pixel = array_pop(&ppu->bg_fifo);
             u16 bg_palette_address = 0xFF47;
@@ -291,7 +291,6 @@ void ppu_tick(PPU *ppu, CPU *cpu){
         }
         if(get_LY(ppu) == 0) unset_LYC_LY(ppu);
         
-        if(get_LY(ppu) == 0) unset_LYC_LY(ppu);
         switch(ppu->mode){
             case MODE_OAM_SCAN:{
                 if(get_LY(ppu) == get_WY(ppu)){
