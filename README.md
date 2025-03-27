@@ -1,3 +1,4 @@
+#Gameboy Emulator
 A cycle-accurate Game Boy emulator written in C++, featuring CPU emulation, graphics rendering, input handling, and audio support. This project was built to deepen my understanding of low-level programming, hardware emulation, and system architecture.
 
 ✨ Features
